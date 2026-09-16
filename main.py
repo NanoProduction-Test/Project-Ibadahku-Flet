@@ -1,24 +1,30 @@
 import datetime
+import math
+import os
 import re
+import struct
 import threading
+import wave
 
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
+from kivy.core.audio import SoundLoader
 from kivy.core.window import Window
-from kivy.graphics import Color, RoundedRectangle
-from kivy.properties import ListProperty, StringProperty
+from kivy.graphics import Color, Line, RoundedRectangle, Triangle
+from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.textinput import TextInput
+from kivy.uix.widget import Widget
 
 import database as db
 import prayertimes
+from doa import DOA
 
-# jendela ukuran layar HP
 Config.set("graphics", "width", "400")
 Config.set("graphics", "height", "700")
 
@@ -38,6 +44,19 @@ try:
 except ImportError:
     notification = None
 
+# merangkai tulisan Arab agar tersambung & arahnya benar
+try:
+    from importlib import import_module
+
+    arabic_reshaper = import_module("arabic_reshaper")
+    get_display = import_module("bidi.algorithm").get_display
+
+    def siapkan_arab(teks):
+        return get_display(arabic_reshaper.reshape(teks))
+except ImportError:
+    def siapkan_arab(teks):
+        return teks
+
 
 def kirim_notif(judul, pesan):
     if notification is None:
@@ -49,32 +68,58 @@ def kirim_notif(judul, pesan):
         pass
 
 
+def cari_font_arab():
+    """Cari font yang mendukung huruf Arab di komputer ini."""
+    for p in ("font/arab.ttf", "C:/Windows/Fonts/segoeui.ttf",
+              "C:/Windows/Fonts/arial.ttf"):
+        if os.path.exists(p):
+            return p
+    return "data/fonts/Roboto-Regular.ttf"
+
+
+def buat_file_bunyi(nama="beep.wav"):
+    """Bikin sendiri file bunyi alarm (3x beep) - tanpa file eksternal."""
+    if os.path.exists(nama):
+        return nama
+    fr, dur, jeda, n = 44100, 0.15, 0.12, 3
+    siklus = dur + jeda
+    with wave.open(nama, "w") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(fr)
+        for i in range(int(fr * siklus * n)):
+            t = i / fr
+            fase = t % siklus
+            nyala = fase < dur
+            amp = math.sin(math.pi * fase / dur) if nyala else 0.0
+            v = int(11000 * amp * math.sin(2 * math.pi * 880 * t))
+            w.writeframes(struct.pack("<h", v))
+    return nama
+
+
+def _baca_jadwal_cache():
+    kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
+    lat = db.ambil_pengaturan("lat")
+    kunci = ("auto:" + kota) if lat else kota
+    return db.ambil_jadwal(kunci, datetime.date.today().isoformat())
+
+
 class Tema:
-    """Pusat semua warna IbadahKu. Ubah di sini, seluruh app ikut."""
+    """Pusat semua warna IbadahKu."""
 
     terang = {
-        "latar":      (0.95, 0.96, 0.95, 1),
-        "kartu":      (1, 1, 1, 1),
-        "utama":      (0.13, 0.45, 0.36, 1),
-        "utama_muda": (0.85, 0.93, 0.87, 1),
-        "netral":     (0.93, 0.93, 0.95, 1),
-        "nav":        (0.88, 0.92, 0.89, 1),
-        "teks":       (0.13, 0.15, 0.14, 1),
-        "teks_pudar": (0.45, 0.48, 0.46, 1),
-        "aksen":      (1, 0.95, 0.8, 1),
-        "putih":      (1, 1, 1, 1),
+        "latar": (0.95, 0.96, 0.95, 1), "kartu": (1, 1, 1, 1),
+        "utama": (0.13, 0.45, 0.36, 1), "utama_muda": (0.85, 0.93, 0.87, 1),
+        "netral": (0.93, 0.93, 0.95, 1), "nav": (0.88, 0.92, 0.89, 1),
+        "teks": (0.13, 0.15, 0.14, 1), "teks_pudar": (0.45, 0.48, 0.46, 1),
+        "aksen": (1, 0.95, 0.8, 1), "putih": (1, 1, 1, 1),
     }
     gelap = {
-        "latar":      (0.09, 0.11, 0.10, 1),
-        "kartu":      (0.16, 0.19, 0.18, 1),
-        "utama":      (0.16, 0.40, 0.33, 1),
-        "utama_muda": (0.22, 0.35, 0.29, 1),
-        "netral":     (0.20, 0.22, 0.21, 1),
-        "nav":        (0.20, 0.24, 0.22, 1),
-        "teks":       (0.92, 0.95, 0.93, 1),
-        "teks_pudar": (0.60, 0.65, 0.62, 1),
-        "aksen":      (0.95, 0.87, 0.6, 1),
-        "putih":      (1, 1, 1, 1),
+        "latar": (0.09, 0.11, 0.10, 1), "kartu": (0.16, 0.19, 0.18, 1),
+        "utama": (0.16, 0.40, 0.33, 1), "utama_muda": (0.22, 0.35, 0.29, 1),
+        "netral": (0.20, 0.22, 0.21, 1), "nav": (0.20, 0.24, 0.22, 1),
+        "teks": (0.92, 0.95, 0.93, 1), "teks_pudar": (0.60, 0.65, 0.62, 1),
+        "aksen": (0.95, 0.87, 0.6, 1), "putih": (1, 1, 1, 1),
     }
     warna = terang
 
@@ -87,8 +132,8 @@ class Tema:
 class Tombol(Button):
     """Button rata (flat) yang warnanya diambil dari Tema."""
 
-    gaya = StringProperty("utama")          # kunci warna latar
-    gaya_teks = StringProperty("putih")     # kunci warna tulisan
+    gaya = StringProperty("utama")
+    gaya_teks = StringProperty("putih")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -211,7 +256,6 @@ class PopupCeklis(Popup):
         self.title = "Tambah Item Ceklis"
         self.size_hint = (0.9, None)
         self.height = 210
-
         kotak = BoxLayout(orientation="vertical", padding=15, spacing=10)
         kotak.add_widget(Label(text="Nama item ceklis:",
                                size_hint_y=None, height=26))
@@ -229,6 +273,23 @@ class PopupCeklis(Popup):
             db.tambah_item_ceklis(nama)
         self.dismiss()
         self.layar.muat_ceklis()
+
+
+class PopupAlarm(Popup):
+    """Jendela alarm yang muncul saat waktu ibadah/kegiatan mendekat."""
+
+    def __init__(self, judul, pesan, **kwargs):
+        super().__init__(**kwargs)
+        self.title = judul
+        self.size_hint = (0.85, None)
+        self.height = 230
+        kotak = BoxLayout(orientation="vertical", padding=18, spacing=12)
+        kotak.add_widget(Label(text=pesan, font_size=18))
+        tombol = Tombol(text="Tutup", size_hint_y=None, height=48)
+        tombol.bind(on_release=lambda *a: self.dismiss())
+        kotak.add_widget(tombol)
+        self.content = kotak
+        Clock.schedule_once(lambda dt: self.dismiss(), 45)
 
 
 class HomeScreen(Screen):
@@ -250,15 +311,17 @@ class HomeScreen(Screen):
                         f"{BULAN[hari.month - 1]} {hari.year}")
 
         kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-        cache = db.ambil_jadwal(kota, hari.isoformat())
+        lat = db.ambil_pengaturan("lat")
+        lon = db.ambil_pengaturan("lon")
+        kunci = ("auto:" + kota) if lat else kota
+        cache = db.ambil_jadwal(kunci, hari.isoformat())
         if cache:
             self.jadwal = cache
         elif not self.sedang_memuat:
             self.sedang_memuat = True
             self.countdown = "Memuat jadwal..."
-            threading.Thread(
-                target=self.ambil_dari_api, args=(kota,), daemon=True
-            ).start()
+            threading.Thread(target=self.ambil_dari_api,
+                             args=(kota, lat, lon), daemon=True).start()
 
         self.muat_timeline()
         self.muat_ceklis()
@@ -269,12 +332,13 @@ class HomeScreen(Screen):
             self.jam_event.cancel()
             self.jam_event = None
 
-    # ---------- jadwal sholat ----------
-
-    def ambil_dari_api(self, kota):
+    def ambil_dari_api(self, kota, lat, lon):
         jadwal, pesan_error = None, ""
         try:
-            jadwal = prayertimes.ambil_jadwal(kota)
+            if lat and lon:
+                jadwal = prayertimes.ambil_jadwal_koordinat(lat, lon)
+            else:
+                jadwal = prayertimes.ambil_jadwal(kota)
         except Exception as e:
             pesan_error = f"{type(e).__name__}: {e}"
         Clock.schedule_once(lambda dt: self.jadwal_tiba(jadwal, pesan_error))
@@ -283,14 +347,15 @@ class HomeScreen(Screen):
         self.sedang_memuat = False
         if jadwal:
             kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-            db.simpan_jadwal(kota, datetime.date.today().isoformat(), jadwal)
+            lat = db.ambil_pengaturan("lat")
+            kunci = ("auto:" + kota) if lat else kota
+            db.simpan_jadwal(kunci, datetime.date.today().isoformat(), jadwal)
             self.jadwal = jadwal
+            App.get_running_app().jadwal = jadwal
             self.muat_timeline()
             self.perbarui_countdown()
         else:
             self.countdown = f"Gagal: {pesan_error}"
-
-    # ---------- countdown + notifikasi kegiatan ----------
 
     def mulai_countdown(self):
         if self.jam_event:
@@ -330,12 +395,9 @@ class HomeScreen(Screen):
                 self.notif_terkirim.add(id_k)
                 kirim_notif("IbadahKu", f"Waktunya: {nama}")
 
-    # ---------- timeline & ceklis ----------
-
     def muat_timeline(self):
         daftar = self.ids.timeline
         daftar.clear_widgets()
-
         item = []
         self.kegiatan_hari_ini = []
         if self.jadwal:
@@ -345,7 +407,6 @@ class HomeScreen(Screen):
             item.append((k["jam"], k["nama"], Tema.warna["netral"]))
             self.kegiatan_hari_ini.append((k["id"], k["nama"], k["jam"]))
         item.sort(key=lambda x: x[0])
-
         for jam, nama, warna in item:
             daftar.add_widget(BarisTimeline(jam, nama, warna))
 
@@ -354,7 +415,6 @@ class HomeScreen(Screen):
         grid.clear_widgets()
         hari = datetime.date.today().isoformat()
         status = db.status_ceklis(hari)
-
         selesai = total = 0
         for c in db.semua_ceklis():
             total += 1
@@ -362,7 +422,6 @@ class HomeScreen(Screen):
             if done:
                 selesai += 1
             grid.add_widget(BarisCeklis(c, done, self))
-
         streak = db.hitung_streak()
         self.teks_streak = (f"Streak: {streak} hari  "
                             f" Selesai hari ini: {selesai}/{total}")
@@ -379,7 +438,6 @@ class BarisKegiatan(Kartu):
         self.size_hint_y = None
         self.height = 64
         self.padding = [14, 8]
-
         info = BoxLayout(orientation="vertical")
         info.add_widget(Label(text=data["nama"], bold=True, font_size=17,
                               color=Tema.warna["teks"]))
@@ -387,7 +445,6 @@ class BarisKegiatan(Kartu):
             text=f"{data['jam']}  •  {data['hari']}  •  {data['kategori']}",
             font_size=13, color=Tema.warna["teks_pudar"]))
         self.add_widget(info)
-
         btn = Tombol(text="Hapus", gaya="netral", gaya_teks="teks_pudar",
                      size_hint_x=0.22, font_size=12)
         btn.bind(on_release=lambda b: self.hapus(data["id"], layar))
@@ -413,7 +470,6 @@ class TambahScreen(Screen):
     def simpan(self):
         nama = self.ids.inp_nama.text.strip()
         jam = self.ids.inp_jam.text.strip()
-
         if not nama:
             self.ids.lbl_pesan.text = "Nama kegiatan belum diisi"
             return
@@ -425,10 +481,9 @@ class TambahScreen(Screen):
         if j > 23 or m > 59:
             self.ids.lbl_pesan.text = "Jam tidak valid (00:00 - 23:59)"
             return
-
         jam = f"{j:02d}:{m:02d}"
-        db.tambah(nama, jam, self.ids.spin_hari.text, self.ids.spin_kategori.text)
-
+        db.tambah(nama, jam, self.ids.spin_hari.text,
+                  self.ids.spin_kategori.text)
         self.ids.inp_nama.text = ""
         self.ids.inp_jam.text = ""
         self.ids.lbl_pesan.text = ""
@@ -450,8 +505,7 @@ class TimerScreen(Screen):
         self.perbarui_total()
 
     def perbarui_total(self):
-        menit = db.total_timer_hari_ini()
-        self.total_hari_ini = f"Total sesi hari ini: {menit} menit"
+        self.total_hari_ini = f"Total sesi hari ini: {db.total_timer_hari_ini()} menit"
 
     def mulai(self):
         if self.event:
@@ -531,9 +585,8 @@ class TasbihScreen(Screen):
         if teks_target != "Bebas":
             target = int(teks_target)
             if self.hitungan == target:
-                dzikir = self.ids.spin_dzikir.text
                 kirim_notif("IbadahKu",
-                            f"MasyaAllah, {target}x {dzikir} selesai!")
+                            f"MasyaAllah, {target}x {self.ids.spin_dzikir.text} selesai!")
         self.perbarui()
 
     def ulang(self):
@@ -546,7 +599,7 @@ class TasbihScreen(Screen):
         try:
             teks_target = self.ids.spin_target.text
         except AttributeError:
-            return                       # ids belum siap saat layout dibangun
+            return
         self.hitungan_label = str(self.hitungan)
         if teks_target == "Bebas":
             self.progres_label = "Mode bebas (tanpa target)"
@@ -561,11 +614,9 @@ class StatistikScreen(Screen):
     def muat_statistik(self):
         grid = self.ids.grid_stat
         grid.clear_widgets()
-
         hari = datetime.date.today().isoformat()
         awal = (datetime.date.today()
                 - datetime.timedelta(days=6)).isoformat()
-
         streak = db.hitung_streak()
         status = db.status_ceklis(hari)
         selesai = sum(1 for v in status.values() if v)
@@ -574,10 +625,8 @@ class StatistikScreen(Screen):
         tasbih_hari = db.ambil_tasbih(hari)
         menit_minggu, tasbih_minggu, hari_aktif = db.ringkasan_minggu(awal)
         total_menit, total_tasbih = db.total_keseluruhan()
-
         self.baris(grid, "Streak ceklis", f"{streak} hari beruntun")
-        self.baris(grid, "Ceklis hari ini",
-                   f"{selesai} dari {aktif} item selesai")
+        self.baris(grid, "Ceklis hari ini", f"{selesai} dari {aktif} item selesai")
         self.baris(grid, "Timer hari ini", f"{menit_hari} menit")
         self.baris(grid, "Tasbih hari ini", f"{tasbih_hari} kali")
         self.baris(grid, "7 hari terakhir",
@@ -598,22 +647,173 @@ class StatistikScreen(Screen):
         grid.add_widget(kartu)
 
 
+class DoaScreen(Screen):
+    """Bacaan doa harian: satu doa per hari + tombol pindah."""
+
+    judul = StringProperty("")
+    arab = StringProperty("")
+    latin = StringProperty("")
+    arti = StringProperty("")
+    nomor = StringProperty("")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.indeks = datetime.date.today().timetuple().tm_yday % len(DOA)
+
+    def on_enter(self):
+        self.tampilkan()
+
+    def tampilkan(self):
+        d = DOA[self.indeks]
+        self.judul = d["judul"]
+        self.arab = siapkan_arab(d["arab"])
+        self.latin = d["latin"]
+        self.arti = '"' + d["arti"] + '"'
+        self.nomor = f"{self.indeks + 1} / {len(DOA)}"
+
+    def sebelumnya(self):
+        self.indeks = (self.indeks - 1) % len(DOA)
+        self.tampilkan()
+
+    def berikutnya(self):
+        self.indeks = (self.indeks + 1) % len(DOA)
+        self.tampilkan()
+
+
+class KompasKiblat(Widget):
+    """Dial kompas + panah merah menunjuk arah kiblat (derajat dari utara)."""
+
+    sudut = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.huruf = {}
+        for h, (dx, dy) in [("U", (0, 1)), ("T", (1, 0)),
+                            ("S", (0, -1)), ("B", (-1, 0))]:
+            l = Label(text=h, font_size=15, bold=True, size=(22, 22),
+                      size_hint=(None, None), color=Tema.warna["teks_pudar"])
+            self.add_widget(l)
+            self.huruf[h] = (l, dx, dy)
+        self.bind(pos=self.gambar, size=self.gambar, sudut=self.gambar)
+
+    def gambar(self, *args):
+        cx, cy = self.center
+        r = min(self.width, self.height) / 2 - 24
+        for l, dx, dy in self.huruf.values():
+            l.center = (cx + dx * (r + 12), cy + dy * (r + 12))
+        self.canvas.clear()
+        with self.canvas:
+            Color(rgba=Tema.warna["teks_pudar"])
+            Line(circle=(cx, cy, r), width=1.5)
+            Line(circle=(cx, cy, 3))
+            # tanda arah utara
+            Line(points=[cx, cy + r - 4, cx, cy + r - 16], width=2)
+            # panah arah kiblat
+            rad = math.radians(self.sudut)
+            ux, uy = cx + (r - 28) * math.sin(rad), cy + (r - 28) * math.cos(rad)
+            bx, by = cx - (r - 52) * math.sin(rad), cy - (r - 52) * math.cos(rad)
+            Color(rgba=(0.78, 0.26, 0.26, 1))
+            Line(points=[bx, by, ux, uy], width=4)
+            p1x = ux + 14 * math.sin(rad + 2.5)
+            p1y = uy + 14 * math.cos(rad + 2.5)
+            p2x = ux + 14 * math.sin(rad - 2.5)
+            p2y = uy + 14 * math.cos(rad - 2.5)
+            Triangle(points=[ux, uy, p1x, p1y, p2x, p2y])
+
+
+class KiblatScreen(Screen):
+    ARAH = ["Utara", "Timur Laut", "Timur", "Tenggara",
+            "Selatan", "Barat Daya", "Barat", "Barat Laut"]
+
+    info = StringProperty("")
+    derajat = StringProperty("")
+    keterangan = StringProperty("")
+
+    def on_enter(self):
+        lat = db.ambil_pengaturan("lat")
+        lon = db.ambil_pengaturan("lon")
+        if lat and lon:
+            lokasi = db.ambil_pengaturan("kota", KOTA_DEFAULT) + " (otomatis)"
+            la, lo = float(lat), float(lon)
+        else:
+            nama = db.ambil_pengaturan("kota", KOTA_DEFAULT)
+            lokasi = nama + " (manual)"
+            la, lo = prayertimes.KOTA_KOORDINAT.get(
+                nama, prayertimes.KOTA_KOORDINAT[KOTA_DEFAULT])
+        b = prayertimes.arah_kiblat(la, lo)
+        arah = self.ARAH[int((b + 22.5) // 45) % 8]
+        self.info = f"Lokasi: {lokasi}"
+        self.derajat = f"{b:.0f} derajat"
+        self.keterangan = (f"Arah kiblat: {arah} dari utara.\n"
+                           "Cara pakai: hadap ke arah UTARA,\n"
+                           f"lalu putar {b:.0f} derajat searah jarum jam.")
+        self.ids.kompas.sudut = b
+
+
 class PengaturanScreen(Screen):
     def on_enter(self):
-        self._sedang_muat = True          # cegah switch "menyala sendiri"
+        self._sedang_muat = True
         spin = self.ids.spin_kota
         if not spin.values:
             spin.values = DAFTAR_KOTA
         spin.text = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-        self.ids.sw_gelap.active = db.ambil_pengaturan("mode_gelap", "0") == "1"
+        self.ids.sw_alarm.active = db.ambil_pengaturan("alarm_aktif", "0") == "1"
+        self.ids.spin_alarm_menit.text = db.ambil_pengaturan("alarm_menit", "10")
+        if db.ambil_pengaturan("lat"):
+            self.ids.lbl_lokasi.text = ("Mode otomatis aktif: "
+                                        + db.ambil_pengaturan("kota", KOTA_DEFAULT))
+        else:
+            self.ids.lbl_lokasi.text = "Mode manual (kota dipilih sendiri)"
+        self.ids.lbl_status.text = ""
         self._sedang_muat = False
+
+    # ----- alarm -----
+
+    def ubah_alarm(self, saklar, aktif):
+        if getattr(self, "_sedang_muat", False):
+            return
+        db.simpan_pengaturan("alarm_aktif", "1" if aktif else "0")
+
+    def pilih_menit(self):
+        if getattr(self, "_sedang_muat", False):
+            return
+        db.simpan_pengaturan("alarm_menit", self.ids.spin_alarm_menit.text)
+
+    # ----- lokasi -----
 
     def simpan_kota(self):
         kota = self.ids.spin_kota.text
         db.simpan_pengaturan("kota", kota)
-        self.ids.lbl_status.text = f"Kota tersimpan: {kota}"
+        db.simpan_pengaturan("lat", "")   # manual: hapus koordinat otomatis
+        db.simpan_pengaturan("lon", "")
+        self.ids.lbl_lokasi.text = "Mode manual (kota dipilih sendiri)"
+        self.ids.lbl_status.text = f"Kota manual tersimpan: {kota}"
 
-    def ubah_mode(self, switch, aktif):
+    def deteksi_lokasi(self):
+        self.ids.lbl_lokasi.text = "Mendeteksi lokasi (butuh internet)..."
+        threading.Thread(target=self._deteksi, daemon=True).start()
+
+    def _deteksi(self):
+        """Berjalan di thread kedua - jaringan tidak boleh di thread utama."""
+        try:
+            kota, lat, lon = prayertimes.deteksi_lokasi()
+        except Exception as e:
+            pesan = f"Gagal mendeteksi: {type(e).__name__}"
+            Clock.schedule_once(lambda dt: self._set_lokasi(pesan))
+            return
+        db.simpan_pengaturan("kota", kota)
+        db.simpan_pengaturan("lat", str(lat))
+        db.simpan_pengaturan("lon", str(lon))
+        info = (f"Mode otomatis aktif: {kota}\n"
+                "Buka ulang Beranda untuk memuat jadwalnya")
+        Clock.schedule_once(lambda dt: self._set_lokasi(info))
+
+    def _set_lokasi(self, teks):
+        self.ids.lbl_lokasi.text = teks
+
+    # ----- mode gelap -----
+
+    def ubah_mode(self, saklar, aktif):
         if getattr(self, "_sedang_muat", False):
             return
         db.simpan_pengaturan("mode_gelap", "1" if aktif else "0")
@@ -624,18 +824,28 @@ class PengaturanScreen(Screen):
 class IbadahKuApp(App):
     title = "IbadahKu"
 
-    # warna yang bisa dibaca oleh file .kv
     warna_utama = ListProperty((0.13, 0.45, 0.36, 1))
     warna_teks = ListProperty((0.13, 0.15, 0.14, 1))
     warna_pudar = ListProperty((0.45, 0.48, 0.46, 1))
+    font_arab = "data/fonts/Roboto-Regular.ttf"
 
     def build(self):
         db.buat_tabel()
         Tema.muat()
-        Window.clearcolor = Tema.warna["latar"]   # latar jendela ikut tema
+        Window.clearcolor = Tema.warna["latar"]
         self.warna_utama = Tema.warna["utama"]
         self.warna_teks = Tema.warna["teks"]
         self.warna_pudar = Tema.warna["teks_pudar"]
+        self.font_arab = cari_font_arab()
+
+        # alarm: jadwal & agenda
+        self.jadwal = _baca_jadwal_cache()
+        self.alarm_terkirim = set()
+        try:
+            self.bunyi = SoundLoader.load(buat_file_bunyi())
+        except Exception:
+            self.bunyi = None
+        Clock.schedule_interval(self.cek_alarm, 20)
 
         sm = ScreenManager()
         sm.add_widget(HomeScreen(name="home"))
@@ -644,8 +854,41 @@ class IbadahKuApp(App):
         sm.add_widget(TimerScreen(name="timer"))
         sm.add_widget(TasbihScreen(name="tasbih"))
         sm.add_widget(StatistikScreen(name="statistik"))
+        sm.add_widget(DoaScreen(name="doa"))
+        sm.add_widget(KiblatScreen(name="kiblat"))
         sm.add_widget(PengaturanScreen(name="pengaturan"))
         return sm
+
+    def cek_alarm(self, *args):
+        """Tiap 20 detik: cek jadwal sholat + kegiatan, alarm H-X menit."""
+        if db.ambil_pengaturan("alarm_aktif", "0") != "1":
+            return
+        if not self.jadwal:
+            self.jadwal = _baca_jadwal_cache() or []
+        if not self.jadwal:
+            return
+        offset = int(db.ambil_pengaturan("alarm_menit", "10"))
+        sekarang = datetime.datetime.now()
+        agenda = list(self.jadwal)
+        for k in db.kegiatan_hari_ini(HARI[sekarang.weekday()]):
+            agenda.append((k["nama"], k["jam"]))
+        for nama, jam in agenda:
+            h, m = map(int, jam.split(":"))
+            waktunya = sekarang.replace(hour=h, minute=m, second=0,
+                                        microsecond=0)
+            pengingat = waktunya - datetime.timedelta(minutes=offset)
+            kunci = f"{nama}@{jam}"
+            if (pengingat <= sekarang < waktunya
+                    and kunci not in self.alarm_terkirim):
+                self.alarm_terkirim.add(kunci)
+                pesan = f"{nama} pukul {jam} - sekitar {offset} menit lagi"
+                kirim_notif("Pengingat IbadahKu", pesan)
+                if self.bunyi:
+                    try:
+                        self.bunyi.play()
+                    except Exception:
+                        pass
+                PopupAlarm("Segera Waktunya!", pesan).open()
 
 
 if __name__ == "__main__":

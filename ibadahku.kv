@@ -162,7 +162,7 @@
         Spinner:
             id: spin_hari
             text: "Setiap hari"
-            values: "Setiap hari,Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Ahad"
+            values: ["Setiap hari", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Ahad"]
         Label:
             text: "Kategori"
             size_hint_y: None
@@ -171,7 +171,7 @@
         Spinner:
             id: spin_kategori
             text: "Ibadah"
-            values: "Ibadah,Belajar,Lainnya"
+            values: ["Ibadah", "Belajar", "Lainnya"]
         Label:
             id: lbl_pesan
             text: ""
@@ -233,7 +233,7 @@
         Spinner:
             id: spin_durasi
             text: "15"
-            values: "1,5,10,15,20,30,45,60"
+            values: ["1", "5", "10", "15", "20", "30", "45", "60"]
             size_hint_y: None
             height: 48
         Widget:
@@ -297,7 +297,7 @@
         Spinner:
             id: spin_dzikir
             text: "Subhanallah"
-            values: "Subhanallah,Alhamdulillah,Allahu Akbar,Astaghfirullah,La ilaha illallah"
+            values: ["Subhanallah", "Alhamdulillah", "Allahu Akbar", "Astaghfirullah", "La ilaha illallah"]
             size_hint_y: None
             height: 44
         Label:
@@ -309,7 +309,7 @@
         Spinner:
             id: spin_target
             text: "33"
-            values: "33,99,100,1000,Bebas"
+            values: ["33", "99", "100", "1000", "Bebas"]
             size_hint_y: None
             height: 44
             on_text: root.perbarui()
@@ -336,9 +336,6 @@
             text: "Ulang Hitungan Hari Ini"
             gaya: "netral"
             gaya_teks: "teks"
-            size_hint_y: None
-            height: 48
-            font_size: 13
             on_release: root.ulang()
         Widget:
         Navigasi:
@@ -377,6 +374,155 @@
                 spacing: 8
                 padding: [12, 12]
 
+<DoaScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 60
+            padding: [10, 0]
+            canvas.before:
+                Color:
+                    rgba: app.warna_utama
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Tombol:
+                text: "< Kembali"
+                gaya: "aksen"
+                gaya_teks: "teks"
+                size_hint_x: 0.32
+                font_size: 13
+                on_release: root.manager.current = "pengaturan"
+            Label:
+                text: "Bacaan Doa"
+                font_size: 22
+                bold: True
+                color: 1, 1, 1, 1
+        ScrollView:
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [22, 18]
+                spacing: 12
+                Label:
+                    text: root.judul
+                    font_size: 21
+                    bold: True
+                    color: app.warna_teks
+                    size_hint_y: None
+                    height: 36
+                Widget:
+                    size_hint_y: None
+                    height: 6
+                Label:
+                    text: root.arab
+                    font_name: app.font_arab
+                    font_size: 27
+                    color: app.warna_teks
+                    size_hint_y: None
+                    height: max(100, self.texture_size[1])
+                    text_size: self.width - 10, None
+                    halign: "center"
+                Label:
+                    text: root.latin
+                    font_size: 15
+                    italic: True
+                    color: app.warna_pudar
+                    size_hint_y: None
+                    height: max(50, self.texture_size[1])
+                    text_size: self.width, None
+                    halign: "center"
+                Label:
+                    text: root.arti
+                    font_size: 15
+                    color: app.warna_teks
+                    size_hint_y: None
+                    height: max(60, self.texture_size[1])
+                    text_size: self.width, None
+                    halign: "center"
+                Widget:
+                    size_hint_y: None
+                    height: 12
+        BoxLayout:
+            size_hint_y: None
+            height: 54
+            spacing: 10
+            padding: [15, 8]
+            Tombol:
+                text: "<<< Sebelumnya"
+                gaya: "netral"
+                gaya_teks: "teks"
+                font_size: 13
+                on_release: root.sebelumnya()
+            Label:
+                text: root.nomor
+                font_size: 13
+                color: app.warna_pudar
+            Tombol:
+                text: "Berikutnya >>>"
+                gaya: "netral"
+                gaya_teks: "teks"
+                font_size: 13
+                on_release: root.berikutnya()
+
+<KiblatScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        BoxLayout:
+            size_hint_y: None
+            height: 60
+            padding: [10, 0]
+            canvas.before:
+                Color:
+                    rgba: app.warna_utama
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Tombol:
+                text: "< Kembali"
+                gaya: "aksen"
+                gaya_teks: "teks"
+                size_hint_x: 0.32
+                font_size: 13
+                on_release: root.manager.current = "pengaturan"
+            Label:
+                text: "Arah Kiblat"
+                font_size: 22
+                bold: True
+                color: 1, 1, 1, 1
+        Widget:
+        Label:
+            text: root.info
+            font_size: 15
+            color: app.warna_teks
+            size_hint_y: None
+            height: 30
+        Label:
+            text: root.derajat
+            font_size: 46
+            bold: True
+            color: app.warna_utama
+            size_hint_y: None
+            height: 64
+        Widget:
+        KompasKiblat:
+            id: kompas
+            size_hint: None, None
+            size: 280, 280
+            pos_hint: {"center_x": 0.5}
+        Widget:
+        Label:
+            text: root.keterangan
+            font_size: 14
+            color: app.warna_pudar
+            size_hint_y: None
+            height: 90
+            text_size: self.width, None
+            halign: "center"
+        Widget:
+
 <PengaturanScreen>:
     BoxLayout:
         orientation: "vertical"
@@ -400,37 +546,119 @@
                 size_hint_y: None
                 height: self.minimum_height
                 padding: [15, 15]
-                spacing: 10
+                spacing: 8
                 Label:
-                    text: "Kota jadwal sholat"
+                    text: "Alarm Pengingat"
                     size_hint_y: None
-                    height: 26
+                    height: 28
                     bold: True
                     color: app.warna_teks
+                BoxLayout:
+                    size_hint_y: None
+                    height: 64
+                    spacing: 8
+                    Label:
+                        text: "Bunyikan pengingat sebelum waktu sholat & kegiatan (saat app terbuka)"
+                        font_size: 12
+                        color: app.warna_pudar
+                        text_size: self.width, None
+                        halign: "left"
+                        valign: "middle"
+                    Switch:
+                        id: sw_alarm
+                        on_active: root.ubah_alarm(self, self.active)
+                BoxLayout:
+                    size_hint_y: None
+                    height: 48
+                    spacing: 8
+                    Label:
+                        text: "Ingatkan H- (menit):"
+                        font_size: 13
+                        color: app.warna_teks
+                    Spinner:
+                        id: spin_alarm_menit
+                        text: "10"
+                        values: ["5", "10", "15", "30"]
+                        size_hint_x: 0.35
+                        on_text: root.pilih_menit()
+                Widget:
+                    size_hint_y: None
+                    height: 18
+                Label:
+                    text: "Lokasi Jadwal Sholat"
+                    size_hint_y: None
+                    height: 28
+                    bold: True
+                    color: app.warna_teks
+                Tombol:
+                    text: "Deteksi Lokasi Otomatis (GPS/IP)"
+                    size_hint_y: None
+                    height: 48
+                    font_size: 13
+                    on_release: root.deteksi_lokasi()
+                Label:
+                    id: lbl_lokasi
+                    text: ""
+                    font_size: 12
+                    color: app.warna_pudar
+                    size_hint_y: None
+                    height: 44
+                    text_size: self.width, None
+                    halign: "left"
                 Spinner:
                     id: spin_kota
                     text: "Jakarta"
                     size_hint_y: None
                     height: 46
                 Label:
-                    text: "(kota lain: tambah di DAFTAR_KOTA, main.py)"
-                    font_size: 12
+                    text: "(pakai pilihan manual + tombol di bawah bila otomatis meleset)"
+                    font_size: 11
                     italic: True
                     size_hint_y: None
                     height: 24
                     color: app.warna_pudar
                 Tombol:
-                    text: "Simpan Kota"
+                    text: "Simpan Kota Manual"
+                    gaya: "utama_muda"
+                    gaya_teks: "teks"
                     size_hint_y: None
                     height: 48
+                    font_size: 13
                     on_release: root.simpan_kota()
                 Widget:
                     size_hint_y: None
-                    height: 20
+                    height: 18
+                Tombol:
+                    text: "Bacaan Doa Harian"
+                    gaya: "utama_muda"
+                    gaya_teks: "teks"
+                    size_hint_y: None
+                    height: 48
+                    font_size: 14
+                    on_release: root.manager.current = "doa"
+                Tombol:
+                    text: "Arah Kiblat"
+                    gaya: "utama_muda"
+                    gaya_teks: "teks"
+                    size_hint_y: None
+                    height: 48
+                    font_size: 14
+                    on_release: root.manager.current = "kiblat"
+                Tombol:
+                    text: "Lihat Statistik"
+                    gaya: "utama_muda"
+                    gaya_teks: "teks"
+                    size_hint_y: None
+                    height: 48
+                    font_size: 14
+                    on_release: root.manager.current = "statistik"
+                Widget:
+                    size_hint_y: None
+                    height: 18
                 Label:
                     text: "Mode Gelap"
                     size_hint_y: None
-                    height: 26
+                    height: 28
                     bold: True
                     color: app.warna_teks
                 BoxLayout:
@@ -447,16 +675,6 @@
                     Switch:
                         id: sw_gelap
                         on_active: root.ubah_mode(self, self.active)
-                Widget:
-                    size_hint_y: None
-                    height: 20
-                Tombol:
-                    text: "Lihat Statistik"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 48
-                    on_release: root.manager.current = "statistik"
                 Label:
                     id: lbl_status
                     text: ""
