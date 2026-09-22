@@ -1,7 +1,9 @@
+import os
 import sqlite3
 from datetime import date, timedelta
 
-DB = "ibadahku.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB = os.path.join(BASE_DIR, "ibadahku.db")
 
 NAMA_WAKTU = ["Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya"]
 
@@ -65,6 +67,11 @@ def buat_tabel():
             """CREATE TABLE IF NOT EXISTS tasbih_log (
                 tanggal  TEXT PRIMARY KEY,
                 hitungan INTEGER NOT NULL DEFAULT 0
+            )"""
+        )
+        con.execute(
+            """CREATE TABLE IF NOT EXISTS doa_favorit (
+                nomor INTEGER PRIMARY KEY
             )"""
         )
         if con.execute("SELECT COUNT(*) FROM ceklis").fetchone()[0] == 0:
@@ -263,3 +270,20 @@ def total_keseluruhan():
         tasbih = con.execute(
             "SELECT COALESCE(SUM(hitungan), 0) FROM tasbih_log").fetchone()[0]
     return menit, tasbih
+
+# ---------------- doa favorit ----------------
+
+def doa_favorit(nomor):
+    with sqlite3.connect(DB) as con:
+        return con.execute("SELECT 1 FROM doa_favorit WHERE nomor = ?", (nomor,)).fetchone() is not None
+
+def set_doa_favorit(nomor, aktif):
+    with sqlite3.connect(DB) as con:
+        if aktif:
+            con.execute("INSERT OR IGNORE INTO doa_favorit (nomor) VALUES (?)", (nomor,))
+        else:
+            con.execute("DELETE FROM doa_favorit WHERE nomor = ?", (nomor,))
+
+def semua_doa_favorit():
+    with sqlite3.connect(DB) as con:
+        return [r[0] for r in con.execute("SELECT nomor FROM doa_favorit ORDER BY nomor").fetchall()]

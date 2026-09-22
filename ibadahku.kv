@@ -26,6 +26,21 @@
                 font_size: 17
                 bold: True
                 color: 1, 0.95, 0.8, 1
+            Label:
+                text: root.ringkasan
+                font_size: 11
+                color: 0.88, 0.96, 0.91, 1
+                size_hint_y: None
+                height: 20
+            Label:
+                text: root.kutipan
+                font_size: 11
+                italic: True
+                color: 0.94, 0.96, 0.92, 1
+                text_size: self.width - 30, None
+                halign: "center"
+                size_hint_y: None
+                height: 22
         ScrollView:
             BoxLayout:
                 orientation: "vertical"
@@ -54,6 +69,12 @@
                     size_hint_y: None
                     height: 24
                     color: app.warna_utama
+                Label:
+                    text: root.progres_hari
+                    font_size: 13
+                    size_hint_y: None
+                    height: 24
+                    color: app.warna_pudar
                 GridLayout:
                     id: grid_ceklis
                     cols: 1
@@ -236,6 +257,7 @@
             values: ["1", "5", "10", "15", "20", "30", "45", "60"]
             size_hint_y: None
             height: 48
+            on_text: root.reset_tampilan_durasi() if not root.event else None
         Widget:
         Label:
             text: root.status
@@ -447,24 +469,32 @@
                     height: 12
         BoxLayout:
             size_hint_y: None
-            height: 54
-            spacing: 10
-            padding: [15, 8]
+            height: 50
+            spacing: 7
+            padding: [12, 6]
             Tombol:
-                text: "<<< Sebelumnya"
+                text: "‹ Sebelumnya"
                 gaya: "netral"
                 gaya_teks: "teks"
-                font_size: 13
+                font_size: 12
                 on_release: root.sebelumnya()
-            Label:
-                text: root.nomor
-                font_size: 13
-                color: app.warna_pudar
             Tombol:
-                text: "Berikutnya >>>"
+                text: root.tombol_favorit
+                gaya: "utama_muda"
+                gaya_teks: "teks"
+                font_size: 11
+                on_release: root.toggle_favorit()
+            Tombol:
+                text: "Acak"
+                gaya: "aksen"
+                gaya_teks: "teks"
+                font_size: 12
+                on_release: root.acak()
+            Tombol:
+                text: "Berikutnya ›"
                 gaya: "netral"
                 gaya_teks: "teks"
-                font_size: 13
+                font_size: 12
                 on_release: root.berikutnya()
 
 <KiblatScreen>:
@@ -628,6 +658,13 @@
                 Widget:
                     size_hint_y: None
                     height: 18
+                Label:
+                    text: "Koleksi doa pendek • bisa disimpan sebagai favorit"
+                    font_size: 11
+                    italic: True
+                    color: app.warna_pudar
+                    size_hint_y: None
+                    height: 24
                 Tombol:
                     text: "Bacaan Doa Harian"
                     gaya: "utama_muda"

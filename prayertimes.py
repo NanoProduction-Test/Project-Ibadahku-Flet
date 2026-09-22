@@ -3,7 +3,9 @@
 import datetime
 import math
 
-import requests
+import json
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 API_KOTA = "https://api.aladhan.com/v1/timingsByCity"
 API_KOORDINAT = "https://api.aladhan.com/v1/timings"
@@ -27,6 +29,28 @@ KOTA_KOORDINAT = {
 KAABAH = (21.4225, 39.8262)
 
 
+class _ResponsHTTP:
+    """Adapter sederhana agar modul tidak bergantung pada paket requests."""
+
+    def __init__(self, url, params=None, timeout=10):
+        if params:
+            url = f"{url}?{urlencode(params)}"
+        with urlopen(url, timeout=timeout) as response:
+            self._status = response.status
+            self._data = json.loads(response.read().decode("utf-8"))
+
+    def raise_for_status(self):
+        if not 200 <= self._status < 300:
+            raise RuntimeError(f"Permintaan HTTP gagal ({self._status})")
+
+    def json(self):
+        return self._data
+
+
+def _get(url, params=None, timeout=10):
+    return _ResponsHTTP(url, params=params, timeout=timeout)
+
+
 def _olah(data):
     timings = data["timings"]
     jadwal = []
@@ -37,8 +61,8 @@ def _olah(data):
 
 
 def ambil_jadwal(kota):
-    r = requests.get(API_KOTA, params={"city": kota, "country": "Indonesia",
-                                       "method": METODE_KEMENAG}, timeout=10)
+    r = _get(API_KOTA, params={"city": kota, "country": "Indonesia",
+                               "method": METODE_KEMENAG}, timeout=10)
     r.raise_for_status()
     return _olah(r.json()["data"])
 
@@ -46,9 +70,9 @@ def ambil_jadwal(kota):
 def ambil_jadwal_koordinat(lat, lon):
     """Jadwal sholat dari koordinat GPS/IP (lebih presisi dari nama kota)."""
     tgl = datetime.date.today().strftime("%d-%m-%Y")
-    r = requests.get(f"{API_KOORDINAT}/{tgl}",
-                     params={"latitude": lat, "longitude": lon,
-                             "method": METODE_KEMENAG}, timeout=10)
+    r = _get(f"{API_KOORDINAT}/{tgl}",
+             params={"latitude": lat, "longitude": lon,
+                 "method": METODE_KEMENAG}, timeout=10)
     r.raise_for_status()
     return _olah(r.json()["data"])
 
@@ -56,7 +80,7 @@ def ambil_jadwal_koordinat(lat, lon):
 def deteksi_lokasi():
     """Deteksi lokasi lewat IP (akurat level kota, tanpa API key).
     Return (nama_kota, lat, lon). GPS perangkat diaktifkan saat build APK."""
-    r = requests.get(API_IP, timeout=10)
+    r = _get(API_IP, timeout=10)
     r.raise_for_status()
     data = r.json()
     return (data.get("city", "Lokasi Saya"),

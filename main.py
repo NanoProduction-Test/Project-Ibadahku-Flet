@@ -6,20 +6,20 @@ import struct
 import threading
 import wave
 
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.config import Config
-from kivy.core.audio import SoundLoader
-from kivy.core.window import Window
-from kivy.graphics import Color, Line, RoundedRectangle, Triangle
-from kivy.properties import ListProperty, NumericProperty, StringProperty
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.textinput import TextInput
-from kivy.uix.widget import Widget
+from kivy.app import App  # pyright: ignore[reportMissingImports]
+from kivy.clock import Clock  # pyright: ignore[reportMissingImports]
+from kivy.config import Config  # pyright: ignore[reportMissingImports]
+from kivy.core.audio import SoundLoader  # pyright: ignore[reportMissingImports]
+from kivy.core.window import Window  # pyright: ignore[reportMissingImports]
+from kivy.graphics import Color, Line, RoundedRectangle, Triangle  # pyright: ignore[reportMissingImports]
+from kivy.properties import ListProperty, NumericProperty, StringProperty  # pyright: ignore[reportMissingImports]
+from kivy.uix.boxlayout import BoxLayout  # pyright: ignore[reportMissingImports]
+from kivy.uix.button import Button  # pyright: ignore[reportMissingImports]
+from kivy.uix.label import Label  # pyright: ignore[reportMissingImports]
+from kivy.uix.popup import Popup  # pyright: ignore[reportMissingImports]
+from kivy.uix.screenmanager import ScreenManager, Screen  # pyright: ignore[reportMissingImports]
+from kivy.uix.textinput import TextInput  # pyright: ignore[reportMissingImports]
+from kivy.uix.widget import Widget  # pyright: ignore[reportMissingImports]
 
 import database as db
 import prayertimes
@@ -40,7 +40,7 @@ DAFTAR_KOTA = [
 ]
 
 try:
-    from plyer import notification
+    from plyer import notification  # pyright: ignore[reportMissingImports]
 except ImportError:
     notification = None
 
@@ -243,8 +243,21 @@ class BarisCeklis(Kartu):
         self.layar.muat_ceklis()
 
     def hapus(self):
-        db.hapus_item_ceklis(self.item_id)
-        self.layar.muat_ceklis()
+        konfirmasi = Popup(title="Hapus item?", size_hint=(0.86, None), height=180)
+        kotak = BoxLayout(orientation="vertical", padding=14, spacing=10)
+        kotak.add_widget(Label(text="Item ini akan disembunyikan dari daftar.", size_hint_y=None, height=35))
+        aksi = BoxLayout(size_hint_y=None, height=46, spacing=8)
+        batal = Tombol(text="Batal", gaya="netral", gaya_teks="teks")
+        ya = Tombol(text="Hapus")
+        aksi.add_widget(batal); aksi.add_widget(ya)
+        kotak.add_widget(aksi); konfirmasi.content = kotak
+        batal.bind(on_release=konfirmasi.dismiss)
+        def lanjut(*_):
+            db.hapus_item_ceklis(self.item_id)
+            konfirmasi.dismiss()
+            self.layar.muat_ceklis()
+        ya.bind(on_release=lanjut)
+        konfirmasi.open()
 
 
 class PopupCeklis(Popup):
@@ -296,6 +309,19 @@ class HomeScreen(Screen):
     tanggal = StringProperty("")
     countdown = StringProperty("Memuat jadwal...")
     teks_streak = StringProperty("")
+    ringkasan = StringProperty("")
+    progres_hari = StringProperty("")
+    kutipan = StringProperty("")
+
+    KUTIPAN = [
+        "Sedikit tetapi rutin lebih baik daripada banyak lalu terhenti.",
+        "Jadikan hari ini lebih dekat kepada Allah daripada kemarin.",
+        "Istirahat boleh, menyerah jangan. Pelan-pelan tetap maju.",
+        "Ilmu, doa, dan amal kecil yang konsisten punya nilai besar.",
+        "Saat hati tenang, syukur terasa lebih mudah.",
+        "Mulai dari satu kebaikan hari ini.",
+        "Semoga langkah kecilmu hari ini menjadi bekal yang baik.",
+    ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -309,6 +335,7 @@ class HomeScreen(Screen):
         hari = datetime.date.today()
         self.tanggal = (f"{HARI[hari.weekday()]}, {hari.day} "
                         f"{BULAN[hari.month - 1]} {hari.year}")
+        self.kutipan = self.KUTIPAN[hari.toordinal() % len(self.KUTIPAN)]
 
         kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
         lat = db.ambil_pengaturan("lat")
@@ -366,6 +393,7 @@ class HomeScreen(Screen):
     def perbarui_countdown(self, *args):
         self.cek_notif_kegiatan()
         if not self.jadwal:
+            self.ringkasan = "Jadwal belum tersedia. Periksa koneksi internet atau pilih kota manual."
             return
         nama, target, besok = self.waktu_berikutnya()
         selisih = int((target - datetime.datetime.now()).total_seconds())
@@ -375,6 +403,7 @@ class HomeScreen(Screen):
         m = (selisih % 3600) // 60
         keterangan = " (besok)" if besok else ""
         self.countdown = f"Menuju {nama}{keterangan} - {j}j {m:02d}m"
+        self.ringkasan = f"Waktu berikutnya: {nama} • {target.strftime("%H:%M")}"
 
     def waktu_berikutnya(self):
         sekarang = datetime.datetime.now()
@@ -423,8 +452,9 @@ class HomeScreen(Screen):
                 selesai += 1
             grid.add_widget(BarisCeklis(c, done, self))
         streak = db.hitung_streak()
-        self.teks_streak = (f"Streak: {streak} hari  "
-                            f" Selesai hari ini: {selesai}/{total}")
+        self.teks_streak = (f"Streak: {streak} hari  •  Selesai hari ini: {selesai}/{total}")
+        persen = int((selesai / total) * 100) if total else 0
+        self.progres_hari = f"Progress ibadah hari ini: {persen}%"
 
     def buka_popup_ceklis(self):
         PopupCeklis(self).open()
@@ -451,8 +481,21 @@ class BarisKegiatan(Kartu):
         self.add_widget(btn)
 
     def hapus(self, id_kegiatan, layar):
-        db.hapus(id_kegiatan)
-        layar.muat_daftar()
+        konfirmasi = Popup(title="Hapus kegiatan?", size_hint=(0.86, None), height=180)
+        kotak = BoxLayout(orientation="vertical", padding=14, spacing=10)
+        kotak.add_widget(Label(text="Kegiatan akan dihapus permanen.", size_hint_y=None, height=35))
+        aksi = BoxLayout(size_hint_y=None, height=46, spacing=8)
+        batal = Tombol(text="Batal", gaya="netral", gaya_teks="teks")
+        ya = Tombol(text="Hapus")
+        aksi.add_widget(batal); aksi.add_widget(ya); kotak.add_widget(aksi)
+        konfirmasi.content = kotak
+        batal.bind(on_release=konfirmasi.dismiss)
+        def lanjut(*_):
+            db.hapus(id_kegiatan)
+            konfirmasi.dismiss()
+            layar.muat_daftar()
+        ya.bind(on_release=lanjut)
+        konfirmasi.open()
 
 
 class KegiatanScreen(Screen):
@@ -503,6 +546,19 @@ class TimerScreen(Screen):
 
     def on_enter(self):
         self.perbarui_total()
+        if self.sisa <= 0:
+            self.reset_tampilan_durasi()
+
+    def reset_tampilan_durasi(self, *args):
+        try:
+            menit = int(self.ids.spin_durasi.text)
+        except (ValueError, AttributeError):
+            menit = 15
+        self.jeda()
+        self.total = max(1, menit * 60)
+        self.sisa = self.total
+        self.tampilkan()
+        self.status = f"Siap fokus selama {menit} menit"
 
     def perbarui_total(self):
         self.total_hari_ini = f"Total sesi hari ini: {db.total_timer_hari_ini()} menit"
@@ -525,11 +581,7 @@ class TimerScreen(Screen):
             self.status = "Jeda - tekan Mulai untuk lanjut"
 
     def ulang(self):
-        self.jeda()
-        self.sisa = 0
-        self.waktu = "00:00"
-        self.status = "Direset. Pilih durasi lalu Mulai"
-        self.ids.progres.value = 0
+        self.reset_tampilan_durasi()
 
     def detik(self, dt):
         self.sisa -= 1
@@ -584,7 +636,7 @@ class TasbihScreen(Screen):
         teks_target = self.ids.spin_target.text
         if teks_target != "Bebas":
             target = int(teks_target)
-            if self.hitungan == target:
+            if self.hitungan >= target and self.hitungan - 1 < target:
                 kirim_notif("IbadahKu",
                             f"MasyaAllah, {target}x {self.ids.spin_dzikir.text} selesai!")
         self.perbarui()
@@ -655,6 +707,7 @@ class DoaScreen(Screen):
     latin = StringProperty("")
     arti = StringProperty("")
     nomor = StringProperty("")
+    tombol_favorit = StringProperty("☆ Simpan Favorit")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -670,6 +723,20 @@ class DoaScreen(Screen):
         self.latin = d["latin"]
         self.arti = '"' + d["arti"] + '"'
         self.nomor = f"{self.indeks + 1} / {len(DOA)}"
+        self.tombol_favorit = "★ Favorit Tersimpan" if db.doa_favorit(self.indeks) else "☆ Simpan Favorit"
+
+    def toggle_favorit(self):
+        aktif = not db.doa_favorit(self.indeks)
+        db.set_doa_favorit(self.indeks, aktif)
+        self.tampilkan()
+
+    def acak(self):
+        if len(DOA) > 1:
+            kandidat = list(range(len(DOA)))
+            kandidat.remove(self.indeks)
+            import random
+            self.indeks = random.choice(kandidat)
+            self.tampilkan()
 
     def sebelumnya(self):
         self.indeks = (self.indeks - 1) % len(DOA)
@@ -759,6 +826,7 @@ class PengaturanScreen(Screen):
         spin.text = db.ambil_pengaturan("kota", KOTA_DEFAULT)
         self.ids.sw_alarm.active = db.ambil_pengaturan("alarm_aktif", "0") == "1"
         self.ids.spin_alarm_menit.text = db.ambil_pengaturan("alarm_menit", "10")
+        self.ids.sw_gelap.active = db.ambil_pengaturan("mode_gelap", "0") == "1"
         if db.ambil_pengaturan("lat"):
             self.ids.lbl_lokasi.text = ("Mode otomatis aktif: "
                                         + db.ambil_pengaturan("kota", KOTA_DEFAULT))
@@ -810,6 +878,8 @@ class PengaturanScreen(Screen):
 
     def _set_lokasi(self, teks):
         self.ids.lbl_lokasi.text = teks
+        if self.manager and self.manager.has_screen("home"):
+            self.manager.get_screen("home").on_enter()
 
     # ----- mode gelap -----
 
@@ -817,8 +887,22 @@ class PengaturanScreen(Screen):
         if getattr(self, "_sedang_muat", False):
             return
         db.simpan_pengaturan("mode_gelap", "1" if aktif else "0")
-        self.ids.lbl_status.text = ("Tersimpan! Buka ulang aplikasi "
-                                    "untuk melihat temanya")
+        Tema.muat()
+        app = App.get_running_app()
+        app.warna_utama = Tema.warna["utama"]
+        app.warna_teks = Tema.warna["teks"]
+        app.warna_pudar = Tema.warna["teks_pudar"]
+        Window.clearcolor = Tema.warna["latar"]
+        # Perbarui tombol yang sudah dibuat agar perubahan terlihat langsung.
+        def refresh(widget):
+            if isinstance(widget, Tombol):
+                widget.perbarui_warna()
+            elif isinstance(widget, Kartu):
+                widget.instr_warna.rgba = Tema.warna["kartu"]
+            for child in widget.children:
+                refresh(child)
+        refresh(app.root)
+        self.ids.lbl_status.text = "Tema diperbarui langsung."
 
 
 class IbadahKuApp(App):
@@ -860,24 +944,34 @@ class IbadahKuApp(App):
         return sm
 
     def cek_alarm(self, *args):
-        """Tiap 20 detik: cek jadwal sholat + kegiatan, alarm H-X menit."""
+        """Cek alarm sholat + kegiatan. Aman saat jadwal belum tersedia."""
         if db.ambil_pengaturan("alarm_aktif", "0") != "1":
             return
-        if not self.jadwal:
-            self.jadwal = _baca_jadwal_cache() or []
-        if not self.jadwal:
-            return
-        offset = int(db.ambil_pengaturan("alarm_menit", "10"))
         sekarang = datetime.datetime.now()
-        agenda = list(self.jadwal)
+        # Saat tanggal berganti, muat jadwal baru dan izinkan alarm hari baru.
+        tanggal_hari_ini = sekarang.date().isoformat()
+        if getattr(self, "tanggal_alarm", None) != tanggal_hari_ini:
+            self.tanggal_alarm = tanggal_hari_ini
+            self.alarm_terkirim.clear()
+            self.jadwal = _baca_jadwal_cache() or []
+        agenda = list(self.jadwal or [])
         for k in db.kegiatan_hari_ini(HARI[sekarang.weekday()]):
             agenda.append((k["nama"], k["jam"]))
+        if not agenda:
+            return
+        try:
+            offset = int(db.ambil_pengaturan("alarm_menit", "10"))
+        except (TypeError, ValueError):
+            offset = 10
         for nama, jam in agenda:
-            h, m = map(int, jam.split(":"))
+            try:
+                h, m = map(int, jam.split(":"))
+            except (ValueError, AttributeError):
+                continue
             waktunya = sekarang.replace(hour=h, minute=m, second=0,
                                         microsecond=0)
             pengingat = waktunya - datetime.timedelta(minutes=offset)
-            kunci = f"{nama}@{jam}"
+            kunci = f"{tanggal_hari_ini}|{nama}@{jam}"
             if (pengingat <= sekarang < waktunya
                     and kunci not in self.alarm_terkirim):
                 self.alarm_terkirim.add(kunci)

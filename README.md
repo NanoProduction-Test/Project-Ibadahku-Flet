@@ -1,40 +1,31 @@
-🕌 IbadahKu
-Aplikasi pencatat jadwal ibadah & kegiatan harian, dibuat dengan Python dan Kivy.Menampilkan timeline harian yang menggabungkan waktu sholat dengan kegiatan pribadi — supaya ibadah dan aktivitas terlihat dalam satu pandangan.
+# IbadahKu
 
-Python
-Kivy
-SQLite
+Aplikasi pendamping ibadah sederhana berbasis Kivy untuk desktop/Windows.
 
-✨ Fitur
-📅 Timeline harian: waktu sholat & kegiatan pribadi terurut otomatis
-➕ Tambah kegiatan: nama, jam, hari, kategori — lengkap dengan validasi input
-💾 Data tersimpan permanen (SQLite) — tidak hilang saat aplikasi ditutup
-🗑️ Hapus kegiatan
-🕌 Jadwal sholat otomatis per kota (minggu 2)
-⏱️ Timer sesi ibadah & checklist harian (minggu 3)
-📊 Statistik & build APK (minggu 4)
-🖼️ Tampilan
-Beranda	Tambah Kegiatan
-(screenshot menyusul)	(screenshot menyusul)
-🚀 Cara Menjalankan
-# 1. Install librarypip install kivy# 2. Jalankan aplikasipython main.py
-🛠️ Teknologi
-Teknologi
-Peran
-Python 3.13	Bahasa utama
-Kivy 2.3	Framework GUI multi-platform
-SQLite	Penyimpanan data kegiatan
-Aladhan API	Sumber jadwal sholat (minggu 2)
-📁 Struktur Project
-ibadahku/
-├── main.py          # Otak aplikasi: layar & logika
-├── ibadahku.kv      # Layout antarmuka (Kivy language)
-├── database.py      # Query SQLite
-└── prayertimes.py   # Jadwal sholat dari API (minggu 2)
-📈 Progres Pengembangan
-Project ini dikerjakan bertahap selama 4 minggu:
+## Fitur
+- Jadwal sholat berdasarkan kota atau lokasi otomatis.
+- Pengingat waktu sholat dan kegiatan saat aplikasi terbuka.
+- Ceklis ibadah harian + streak.
+- Progress ibadah harian.
+- Timer sesi ibadah/belajar.
+- Tasbih digital dengan target 33, 99, 100, 1000, atau bebas.
+- Statistik aktivitas hari ini, 7 hari terakhir, dan total.
+- Koleksi 25+ doa pendek, navigasi acak, dan favorit yang tersimpan di SQLite.
+- Arah kiblat berdasarkan koordinat kota/lokasi.
+- Mode gelap yang berubah langsung.
+- Database SQLite lokal.
 
- Minggu 1 — Kerangka aplikasi, CRUD kegiatan, timeline harian
- Minggu 2 — Jadwal sholat otomatis (API Aladhan) + pilih kota
- Minggu 3 — Timer sesi ibadah, checklist harian, streak
- Minggu 4 — Statistik, mode gelap, build APK
+## Menjalankan di Windows
+Dari folder yang berisi `main.py`:
+
+```powershell
+python main.py
+```
+
+## Instalasi dependency
+```powershell
+python -m pip install -r requirements.txt
+```
+
+## Catatan
+Fitur alarm/notifikasi bekerja ketika aplikasi sedang terbuka. Jadwal sholat membutuhkan koneksi internet saat data belum tersedia di cache.
