@@ -57,6 +57,14 @@ def buat_tabel():
             )"""
         )
         con.execute(
+            """CREATE TABLE IF NOT EXISTS kegiatan_log (
+                tanggal TEXT NOT NULL,
+                kegiatan_id INTEGER NOT NULL,
+                selesai INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (tanggal, kegiatan_id)
+            )"""
+        )
+        con.execute(
             """CREATE TABLE IF NOT EXISTS timer_log (
                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 tanggal TEXT NOT NULL,
@@ -74,9 +82,36 @@ def buat_tabel():
                 nomor INTEGER PRIMARY KEY
             )"""
         )
+        con.execute(
+            """CREATE TABLE IF NOT EXISTS achievement (
+                id TEXT PRIMARY KEY,
+                tercapai INTEGER NOT NULL DEFAULT 0,
+                tanggal TEXT
+            )"""
+        )
+        con.execute(
+            """CREATE TABLE IF NOT EXISTS ayat_cache (
+                tanggal TEXT PRIMARY KEY,
+                surah TEXT,
+                ayat TEXT,
+                teks_arab TEXT,
+                teks_indo TEXT
+            )"""
+        )
         if con.execute("SELECT COUNT(*) FROM ceklis").fetchone()[0] == 0:
             for nama in CEKLIS_DEFAULT:
                 con.execute("INSERT INTO ceklis (nama) VALUES (?)", (nama,))
+        else:
+            # Migrasi kecil untuk database lama: versi sebelumnya bisa meninggalkan
+            # semua checklist default sebagai nonaktif setelah penghapusan.
+            rows = con.execute("SELECT nama, aktif FROM ceklis").fetchall()
+            nama_rows = {r[0] for r in rows}
+            punya_kustom = bool(nama_rows - set(CEKLIS_DEFAULT))
+            if not punya_kustom and rows and not any(r[1] for r in rows):
+                con.executemany(
+                    "UPDATE ceklis SET aktif = 1 WHERE nama = ?",
+                    [(nama,) for nama in CEKLIS_DEFAULT],
+                )
 
 
 # ---------------- kegiatan ----------------
@@ -109,6 +144,25 @@ def kegiatan_hari_ini(nama_hari):
 def hapus(id_kegiatan):
     with sqlite3.connect(DB) as con:
         con.execute("DELETE FROM kegiatan WHERE id = ?", (id_kegiatan,))
+        con.execute("DELETE FROM kegiatan_log WHERE kegiatan_id = ?", (id_kegiatan,))
+
+
+def status_kegiatan(tanggal):
+    with sqlite3.connect(DB) as con:
+        rows = con.execute(
+            "SELECT kegiatan_id, selesai FROM kegiatan_log WHERE tanggal = ?",
+            (tanggal,),
+        ).fetchall()
+    return {r[0]: bool(r[1]) for r in rows}
+
+
+def set_kegiatan_selesai(kegiatan_id, tanggal, selesai):
+    with sqlite3.connect(DB) as con:
+        con.execute(
+            "INSERT INTO kegiatan_log (tanggal, kegiatan_id, selesai) VALUES (?, ?, ?) "
+            "ON CONFLICT(tanggal, kegiatan_id) DO UPDATE SET selesai=excluded.selesai",
+            (tanggal, kegiatan_id, 1 if selesai else 0),
+        )
 
 
 # ---------------- pengaturan ----------------
@@ -178,6 +232,28 @@ def toggle_ceklis(item_id, tanggal):
         con.execute(
             "UPDATE ceklis_log SET selesai = 1 - selesai"
             " WHERE tanggal = ? AND item_id = ?", (tanggal, item_id))
+
+
+
+def set_ceklis(item_id, tanggal, selesai):
+    """Set status ceklis secara eksplisit; tidak bergantung pada toggle UI."""
+    with sqlite3.connect(DB) as con:
+        con.execute(
+            "INSERT INTO ceklis_log (tanggal, item_id, selesai) VALUES (?, ?, ?) "
+            "ON CONFLICT(tanggal, item_id) DO UPDATE SET selesai=excluded.selesai",
+            (tanggal, item_id, 1 if selesai else 0),
+        )
+
+
+def set_semua_ceklis(tanggal, selesai):
+    with sqlite3.connect(DB) as con:
+        ids = [r[0] for r in con.execute("SELECT id FROM ceklis WHERE aktif=1").fetchall()]
+        for item_id in ids:
+            con.execute(
+                "INSERT INTO ceklis_log (tanggal, item_id, selesai) VALUES (?, ?, ?) "
+                "ON CONFLICT(tanggal, item_id) DO UPDATE SET selesai=excluded.selesai",
+                (tanggal, item_id, 1 if selesai else 0),
+            )
 
 
 def tambah_item_ceklis(nama):
@@ -287,3 +363,61 @@ def set_doa_favorit(nomor, aktif):
 def semua_doa_favorit():
     with sqlite3.connect(DB) as con:
         return [r[0] for r in con.execute("SELECT nomor FROM doa_favorit ORDER BY nomor").fetchall()]
+
+
+# ---------------- achievement ----------------
+
+def simpan_achievement(achievement_id, tanggal):
+    with sqlite3.connect(DB) as con:
+        con.execute(
+            "INSERT OR IGNORE INTO achievement (id, tercapai, tanggal) VALUES (?, 1, ?)",
+            (achievement_id, tanggal))
+
+def ambil_achievement():
+    with sqlite3.connect(DB) as con:
+        return {r[0]: r[1] for r in con.execute(
+            "SELECT id, tanggal FROM achievement WHERE tercapai = 1").fetchall()}
+
+# ---------------- ayat harian ----------------
+
+def simpan_ayat(tanggal, surah, ayat, teks_arab, teks_indo):
+    with sqlite3.connect(DB) as con:
+        con.execute(
+            "INSERT OR REPLACE INTO ayat_cache VALUES (?, ?, ?, ?, ?)",
+            (tanggal, surah, ayat, teks_arab, teks_indo))
+
+def ambil_ayat(tanggal):
+    with sqlite3.connect(DB) as con:
+        con.row_factory = sqlite3.Row
+        return con.execute(
+            "SELECT * FROM ayat_cache WHERE tanggal = ?", (tanggal,)).fetchone()
+
+# ---------------- data grafik mingguan ----------------
+
+def data_grafik_mingguan(awal=None):
+    """Return data 7 hari terakhir: list of dict {tanggal, menit, tasbih, ceklis_persen}."""
+    hasil = []
+    for i in range(6, -1, -1):
+        hari = date.today() - timedelta(days=i)
+        tgl = hari.isoformat()
+        with sqlite3.connect(DB) as con:
+            menit = con.execute(
+                "SELECT COALESCE(SUM(menit), 0) FROM timer_log WHERE tanggal = ?",
+                (tgl,)).fetchone()[0]
+            tasbih = con.execute(
+                "SELECT COALESCE(SUM(hitungan), 0) FROM tasbih_log WHERE tanggal = ?",
+                (tgl,)).fetchone()[0]
+            status = con.execute(
+                "SELECT COUNT(*) FROM ceklis_log WHERE tanggal = ? AND selesai = 1",
+                (tgl,)).fetchone()[0]
+            total_ceklis = con.execute(
+                "SELECT COUNT(*) FROM ceklis WHERE aktif = 1").fetchone()[0]
+        persen = int((status / total_ceklis) * 100) if total_ceklis > 0 else 0
+        hasil.append({
+            "tanggal": tgl,
+            "hari": hari.strftime("%a"),
+            "menit": menit,
+            "tasbih": tasbih,
+            "ceklis_persen": persen,
+        })
+    return hasil

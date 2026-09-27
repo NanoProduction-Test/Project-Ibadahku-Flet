@@ -1,11 +1,10 @@
 """Jembatan ke API Aladhan + deteksi lokasi + hitung arah kiblat."""
 
 import datetime
-import math
-
 import json
+import math
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 API_KOTA = "https://api.aladhan.com/v1/timingsByCity"
 API_KOORDINAT = "https://api.aladhan.com/v1/timings"
@@ -29,26 +28,22 @@ KOTA_KOORDINAT = {
 KAABAH = (21.4225, 39.8262)
 
 
-class _ResponsHTTP:
-    """Adapter sederhana agar modul tidak bergantung pada paket requests."""
-
-    def __init__(self, url, params=None, timeout=10):
-        if params:
-            url = f"{url}?{urlencode(params)}"
-        with urlopen(url, timeout=timeout) as response:
-            self._status = response.status
-            self._data = json.loads(response.read().decode("utf-8"))
+class _Response:
+    def __init__(self, response):
+        self._response = response
 
     def raise_for_status(self):
-        if not 200 <= self._status < 300:
-            raise RuntimeError(f"Permintaan HTTP gagal ({self._status})")
+        return None
 
     def json(self):
-        return self._data
+        return json.loads(self._response.read().decode("utf-8"))
 
 
 def _get(url, params=None, timeout=10):
-    return _ResponsHTTP(url, params=params, timeout=timeout)
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    return _Response(urlopen(Request(url, headers={"User-Agent": "IbadahKu/1.0"}),
+                             timeout=timeout))
 
 
 def _olah(data):
@@ -62,7 +57,7 @@ def _olah(data):
 
 def ambil_jadwal(kota):
     r = _get(API_KOTA, params={"city": kota, "country": "Indonesia",
-                               "method": METODE_KEMENAG}, timeout=10)
+                                "method": METODE_KEMENAG}, timeout=10)
     r.raise_for_status()
     return _olah(r.json()["data"])
 
@@ -72,7 +67,7 @@ def ambil_jadwal_koordinat(lat, lon):
     tgl = datetime.date.today().strftime("%d-%m-%Y")
     r = _get(f"{API_KOORDINAT}/{tgl}",
              params={"latitude": lat, "longitude": lon,
-                 "method": METODE_KEMENAG}, timeout=10)
+                     "method": METODE_KEMENAG}, timeout=10)
     r.raise_for_status()
     return _olah(r.json()["data"])
 

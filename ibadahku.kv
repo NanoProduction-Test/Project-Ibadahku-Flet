@@ -1,725 +1,990 @@
-<HomeScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
+#:kivy 2.3.1
+
+# ---------------------------------------------------------------------------
+# Template dasar (dynamic class) supaya warna & bentuk konsisten di semua
+# layar tanpa mengulang kode yang sama berkali-kali.
+# ---------------------------------------------------------------------------
+
+<Layar@MDBoxLayout>:
+    orientation: "vertical"
+    md_bg_color: app.warna_malam if app.theme_cls.theme_style == "Dark" else app.warna_kertas
+
+<Kartu@MDCard>:
+    md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
+    radius: [18]
+    elevation: 0
+
+<Chip@MDRaisedButton>:
+    elevation: 0
+    theme_text_color: "Custom"
+    md_bg_color: app.warna_teal_soft if app.theme_cls.theme_style != "Dark" else app.warna_malam_kartu
+    text_color: app.warna_tinta if app.theme_cls.theme_style != "Dark" else app.warna_ivory
+
+<NavIconSlot@MDCard>:
+    size_hint: None, None
+    size: "44dp", "44dp"
+    radius: [22]
+    elevation: 0
+    md_bg_color: 0, 0, 0, 0
+
+<Navigasi>:
+    size_hint_y: None
+    height: "64dp"
+    padding: "10dp", "8dp"
+    spacing: "2dp"
+    md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
+    elevation: 3
+    Widget:
+    NavIconSlot:
+        pos_hint: {"center_y": .5}
+        md_bg_color: app.warna_teal_soft if root.layar_aktif == "home" else (0, 0, 0, 0)
+        MDIconButton:
+            icon: "home-variant" if root.layar_aktif == "home" else "home-outline"
+            theme_icon_color: "Custom"
+            icon_color: app.theme_cls.primary_color if root.layar_aktif == "home" else app.theme_cls.disabled_hint_text_color
+            pos_hint: {"center_x": .5, "center_y": .5}
+            on_release: root.pindah("home")
+    Widget:
+    NavIconSlot:
+        pos_hint: {"center_y": .5}
+        md_bg_color: app.warna_teal_soft if root.layar_aktif == "kegiatan" else (0, 0, 0, 0)
+        MDIconButton:
+            icon: "format-list-checks"
+            theme_icon_color: "Custom"
+            icon_color: app.theme_cls.primary_color if root.layar_aktif == "kegiatan" else app.theme_cls.disabled_hint_text_color
+            pos_hint: {"center_x": .5, "center_y": .5}
+            on_release: root.pindah("kegiatan")
+    Widget:
+    NavIconSlot:
+        pos_hint: {"center_y": .5}
+        md_bg_color: app.warna_teal_soft if root.layar_aktif == "timer" else (0, 0, 0, 0)
+        MDIconButton:
+            icon: "timer-outline"
+            theme_icon_color: "Custom"
+            icon_color: app.theme_cls.primary_color if root.layar_aktif == "timer" else app.theme_cls.disabled_hint_text_color
+            pos_hint: {"center_x": .5, "center_y": .5}
+            on_release: root.pindah("timer")
+    Widget:
+    NavIconSlot:
+        pos_hint: {"center_y": .5}
+        md_bg_color: app.warna_teal_soft if root.layar_aktif == "tasbih" else (0, 0, 0, 0)
+        MDIconButton:
+            icon: "circle-double"
+            theme_icon_color: "Custom"
+            icon_color: app.theme_cls.primary_color if root.layar_aktif == "tasbih" else app.theme_cls.disabled_hint_text_color
+            pos_hint: {"center_x": .5, "center_y": .5}
+            on_release: root.pindah("tasbih")
+    Widget:
+    NavIconSlot:
+        pos_hint: {"center_y": .5}
+        md_bg_color: app.warna_teal_soft if root.layar_aktif == "pengaturan" else (0, 0, 0, 0)
+        MDIconButton:
+            icon: "cog-outline"
+            theme_icon_color: "Custom"
+            icon_color: app.theme_cls.primary_color if root.layar_aktif == "pengaturan" else app.theme_cls.disabled_hint_text_color
+            pos_hint: {"center_x": .5, "center_y": .5}
+            on_release: root.pindah("pengaturan")
+    Widget:
+
+# ---------------------------------------------------------------------------
+# Splash
+# ---------------------------------------------------------------------------
+
+<SplashScreen>:
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: app.theme_cls.primary_dark
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        SplashArt:
+            size_hint: 1, 1
+            pos_hint: {"x": 0, "y": 0}
+        MDBoxLayout:
             orientation: "vertical"
-            size_hint_y: None
-            height: 120
-            padding: [0, 10]
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
+            pos_hint: {"center_x": .5, "center_y": .5}
+            adaptive_height: True
+            spacing: "10dp"
+            MDLabel:
                 text: "IbadahKu"
-                font_size: 26
-                bold: True
-                color: 1, 1, 1, 1
-            Label:
-                text: root.tanggal
-                font_size: 13
-                color: 0.88, 0.96, 0.91, 1
-            Label:
-                text: root.countdown
-                font_size: 17
-                bold: True
-                color: 1, 0.95, 0.8, 1
-            Label:
-                text: root.ringkasan
-                font_size: 11
-                color: 0.88, 0.96, 0.91, 1
-                size_hint_y: None
-                height: 20
-            Label:
-                text: root.kutipan
-                font_size: 11
-                italic: True
-                color: 0.94, 0.96, 0.92, 1
-                text_size: self.width - 30, None
+                font_style: "H3"
+                theme_text_color: "Custom"
+                text_color: app.warna_ivory
                 halign: "center"
-                size_hint_y: None
-                height: 22
-        ScrollView:
-            BoxLayout:
+                bold: True
+            MDLabel:
+                text: "Pendamping Ibadah Harian"
+                font_style: "Subtitle1"
+                theme_text_color: "Custom"
+                text_color: app.warna_emas
+                halign: "center"
+
+# ---------------------------------------------------------------------------
+# Beranda
+# ---------------------------------------------------------------------------
+
+<HomeScreen>:
+    Layar:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "56dp"
+            padding: "16dp", "8dp"
+            md_bg_color: app.theme_cls.primary_dark
+            MDLabel:
+                text: "IbadahKu"
+                font_style: "H5"
+                bold: True
+                theme_text_color: "Custom"
+                text_color: app.warna_ivory
+            MDBoxLayout:
                 orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height
-                GridLayout:
-                    id: timeline
-                    cols: 1
+                MDLabel:
+                    text: root.tanggal
+                    font_style: "Caption"
+                    halign: "right"
+                    theme_text_color: "Custom"
+                    text_color: app.warna_ivory
+                MDLabel:
+                    text: root.tanggal_hijri
+                    font_style: "Caption"
+                    halign: "right"
+                    theme_text_color: "Custom"
+                    text_color: app.warna_emas
+        MDScrollView:
+            MDBoxLayout:
+                orientation: "vertical"
+                padding: "16dp"
+                spacing: "16dp"
+                adaptive_height: True
+                FloatLayout:
                     size_hint_y: None
-                    height: self.minimum_height
-                    spacing: 6
-                    padding: [10, 10]
-                Widget:
+                    height: "192dp"
+                    KubahHero:
+                        size_hint: 1, 1
+                        pos_hint: {"x": 0, "y": 0}
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        size_hint: 1, 1
+                        padding: "20dp", "18dp"
+                        spacing: "2dp"
+                        MDLabel:
+                            text: "Menuju waktu sholat"
+                            font_style: "Caption"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: app.warna_emas
+                            adaptive_height: True
+                        MDLabel:
+                            text: root.countdown
+                            font_style: "H4"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: app.warna_ivory
+                            adaptive_height: True
+                        MDLabel:
+                            text: root.ringkasan
+                            font_style: "Body2"
+                            theme_text_color: "Custom"
+                            text_color: 1, 1, 1, 0.85
+                            adaptive_height: True
+                        Widget:
+                        MDLabel:
+                            text: root.kutipan
+                            font_style: "Caption"
+                            italic: True
+                            theme_text_color: "Custom"
+                            text_color: app.warna_emas_soft
+                            adaptive_height: True
+                MDBoxLayout:
                     size_hint_y: None
-                    height: 16
-                Label:
-                    text: "Ceklis Ibadah Hari Ini"
-                    font_size: 20
+                    height: "84dp"
+                    spacing: "12dp"
+                    Kartu:
+                        orientation: "vertical"
+                        padding: "2dp", "8dp"
+                        MDIconButton:
+                            icon: "book-outline"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": .5}
+                            on_release: root.manager.current = "doa"
+                        MDLabel:
+                            text: "Doa"
+                            font_style: "Caption"
+                            bold: True
+                            halign: "center"
+                    Kartu:
+                        orientation: "vertical"
+                        padding: "2dp", "8dp"
+                        MDIconButton:
+                            icon: "compass-outline"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": .5}
+                            on_release: root.manager.current = "kiblat"
+                        MDLabel:
+                            text: "Kiblat"
+                            font_style: "Caption"
+                            bold: True
+                            halign: "center"
+                    Kartu:
+                        orientation: "vertical"
+                        padding: "2dp", "8dp"
+                        MDIconButton:
+                            icon: "chart-bar"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            pos_hint: {"center_x": .5}
+                            on_release: root.manager.current = "statistik"
+                        MDLabel:
+                            text: "Statistik"
+                            font_style: "Caption"
+                            bold: True
+                            halign: "center"
+                Kartu:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: "150dp"
+                    padding: "16dp"
+                    MDLabel:
+                        text: "Ayat Hari Ini"
+                        font_style: "Caption"
+                        theme_text_color: "Secondary"
+                        adaptive_height: True
+                    MDLabel:
+                        text: root.ayat_hari
+                        font_name: app.font_arab
+                        font_size: "25sp"
+                        halign: "right"
+                        text_size: self.width, None
+                        shorten: False
+                    GarisHias:
+                        size_hint_y: None
+                        height: "10dp"
+                    MDLabel:
+                        text: root.arti_hari
+                        font_style: "Caption"
+                        theme_text_color: "Secondary"
+                        italic: True
+                    MDLabel:
+                        text: root.surah_hari
+                        font_style: "Overline"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primary_color
+                MDLabel:
+                    text: "Jadwal Hari Ini"
+                    font_style: "Subtitle1"
                     bold: True
-                    size_hint_y: None
-                    height: 32
-                    color: app.warna_teks
-                Label:
-                    text: root.teks_streak
-                    font_size: 14
-                    size_hint_y: None
-                    height: 24
-                    color: app.warna_utama
-                Label:
-                    text: root.progres_hari
-                    font_size: 13
-                    size_hint_y: None
-                    height: 24
-                    color: app.warna_pudar
-                GridLayout:
-                    id: grid_ceklis
-                    cols: 1
-                    size_hint_y: None
-                    height: self.minimum_height
-                    spacing: 6
-                    padding: [10, 0]
-                Tombol:
-                    text: "+ Tambah Item Ceklis"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 44
-                    font_size: 14
-                    on_release: root.buka_popup_ceklis()
-                Widget:
-                    size_hint_y: None
-                    height: 14
+                    adaptive_height: True
+                MDBoxLayout:
+                    id: timeline
+                    orientation: "vertical"
+                    adaptive_height: True
+                    spacing: "8dp"
+                Kartu:
+                    orientation: "vertical"
+                    adaptive_height: True
+                    padding: "16dp"
+                    spacing: "8dp"
+                    MDLabel:
+                        text: "Checklist Hari Ini"
+                        font_style: "Subtitle1"
+                        bold: True
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        MDLabel:
+                            text: root.teks_streak
+                            font_style: "Caption"
+                            theme_text_color: "Secondary"
+                        MDLabel:
+                            text: root.progres_hari
+                            font_style: "Caption"
+                            halign: "right"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                    MDProgressBar:
+                        id: bar_progress
+                        value: 0
+                    MDBoxLayout:
+                        id: grid_ceklis
+                        orientation: "vertical"
+                        adaptive_height: True
+                        spacing: "6dp"
+                        padding: "0dp", "6dp"
+                    MDBoxLayout:
+                        adaptive_height: True
+                        spacing: "8dp"
+                        padding: ["0dp", "8dp", "0dp", "0dp"]
+                        MDFlatButton:
+                            text: "+ Tambah"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            on_release: root.buka_popup_ceklis()
+                        Widget:
+                        MDFlatButton:
+                            text: "Selesaikan"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            on_release: root.selesaikan_semua()
+                        MDFlatButton:
+                            text: "Reset"
+                            theme_text_color: "Secondary"
+                            on_release: root.reset_ceklis_hari_ini()
         Navigasi:
+            layar_aktif: "home"
+
+<BarisTimeline>:
+    size_hint_y: None
+    height: "48dp"
+    padding: "0dp"
+    spacing: "0dp"
+    radius: [10]
+    elevation: 0
+    md_bg_color: app.warna_teal_soft if self.is_jadwal else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
+    MDBoxLayout:
+        size_hint_x: None
+        width: "4dp"
+        md_bg_color: app.theme_cls.primary_color if root.is_jadwal else app.warna_emas
+    MDLabel:
+        text: root.jam
+        font_style: "Subtitle2"
+        bold: True
+        size_hint_x: 0.28
+        padding: "12dp", "0dp"
+    MDLabel:
+        text: root.nama
+        font_style: "Body1"
+        size_hint_x: 0.72
+
+<BarisCeklis>:
+    size_hint_y: None
+    height: "56dp"
+    padding: "0dp"
+    spacing: "0dp"
+    radius: [10]
+    elevation: 0
+    md_bg_color: app.warna_teal_soft if root.selesai else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
+    MDBoxLayout:
+        size_hint_x: None
+        width: "4dp"
+        md_bg_color: app.theme_cls.primary_color
+    MDIconButton:
+        icon: "check-circle" if root.selesai else "circle-outline"
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color if root.selesai else app.theme_cls.disabled_hint_text_color
+        on_release: root.on_release()
+    MDLabel:
+        text: root.data['nama'] if root.data else ""
+        font_style: "Body1"
+    MDIconButton:
+        icon: "trash-can-outline"
+        theme_text_color: "Hint"
+        on_release: root.hapus()
+
+<BarisCeklisKegiatan>:
+    size_hint_y: None
+    height: "56dp"
+    padding: "0dp"
+    spacing: "0dp"
+    radius: [10]
+    elevation: 0
+    md_bg_color: app.warna_emas_soft if root.selesai else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
+    MDBoxLayout:
+        size_hint_x: None
+        width: "4dp"
+        md_bg_color: app.warna_emas
+    MDIconButton:
+        icon: "check-circle" if root.selesai else "circle-outline"
+        theme_text_color: "Custom"
+        text_color: app.warna_emas if root.selesai else app.theme_cls.disabled_hint_text_color
+        on_release: root.on_release()
+    MDBoxLayout:
+        orientation: "vertical"
+        MDLabel:
+            text: root.data['nama'] if root.data else ""
+            font_style: "Body1"
+            shorten: True
+        MDLabel:
+            text: f"{root.data['jam']}  •  {root.data['kategori']}" if root.data else ""
+            font_style: "Caption"
+            theme_text_color: "Secondary"
+    MDLabel:
+        text: "Kegiatan"
+        font_style: "Caption"
+        theme_text_color: "Secondary"
+        size_hint_x: .28
+        halign: "right"
+
+# ---------------------------------------------------------------------------
+# Kegiatan
+# ---------------------------------------------------------------------------
 
 <KegiatanScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            padding: [15, 8]
-            spacing: 10
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
-                text: "Kegiatanku"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-            Tombol:
-                text: "+ Tambah"
-                size_hint_x: 0.28
-                font_size: 13
-                on_release: root.manager.current = "tambah"
-        ScrollView:
-            GridLayout:
-                id: daftar_kegiatan
-                cols: 1
-                size_hint_y: None
-                height: self.minimum_height
-                spacing: 6
-                padding: [10, 10]
+    Layar:
+        MDTopAppBar:
+            title: "Kegiatanku"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+            right_action_items: [["plus", lambda x: setattr(root.manager, 'current', 'tambah')]]
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "16dp"
+            MDLabel:
+                text: "Atur pengingat pribadi untuk ibadah, belajar, atau rutinitas harian."
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                adaptive_height: True
+            MDScrollView:
+                MDBoxLayout:
+                    id: daftar_kegiatan
+                    orientation: "vertical"
+                    adaptive_height: True
+                    spacing: "8dp"
+                    padding: ["0dp", "16dp", "0dp", "0dp"]
         Navigasi:
+            layar_aktif: "kegiatan"
+
+<BarisKegiatan>:
+    size_hint_y: None
+    height: "72dp"
+    padding: "0dp"
+    spacing: "0dp"
+    radius: [10]
+    elevation: 0
+    md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
+    MDBoxLayout:
+        size_hint_x: None
+        width: "4dp"
+        md_bg_color: app.warna_emas
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: "16dp", "8dp"
+        MDLabel:
+            text: root.data['nama'] if root.data else ""
+            font_style: "Subtitle1"
+            bold: True
+        MDLabel:
+            text: f"{root.data['jam']}  •  {root.data['hari']}  •  {root.data['kategori']}" if root.data else ""
+            font_style: "Caption"
+            theme_text_color: "Secondary"
+    MDIconButton:
+        icon: "trash-can-outline"
+        theme_text_color: "Hint"
+        pos_hint: {"center_y": .5}
+        on_release: root.hapus()
 
 <TambahScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        padding: [20, 15]
-        spacing: 10
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
-                text: "Tambah Kegiatan"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        Widget:
-        Label:
-            text: "Nama kegiatan"
-            size_hint_y: None
-            height: 26
-            halign: "left"
-            text_size: self.width, None
-            color: app.warna_teks
-        TextInput:
-            id: inp_nama
-            multiline: False
-            size_hint_y: None
-            height: 46
-            hint_text: "contoh: Baca Qur'an 1 halaman"
-        Label:
-            text: "Jam (format 24 jam, contoh: 06:30)"
-            size_hint_y: None
-            height: 26
-            halign: "left"
-            text_size: self.width, None
-            color: app.warna_teks
-        TextInput:
-            id: inp_jam
-            multiline: False
-            size_hint_y: None
-            height: 46
-            hint_text: "06:30"
-        Label:
-            text: "Hari"
-            size_hint_y: None
-            height: 26
-            color: app.warna_teks
-        Spinner:
-            id: spin_hari
-            text: "Setiap hari"
-            values: ["Setiap hari", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Ahad"]
-        Label:
-            text: "Kategori"
-            size_hint_y: None
-            height: 26
-            color: app.warna_teks
-        Spinner:
-            id: spin_kategori
-            text: "Ibadah"
-            values: ["Ibadah", "Belajar", "Lainnya"]
-        Label:
-            id: lbl_pesan
-            text: ""
-            color: 0.85, 0.25, 0.25, 1
-            size_hint_y: None
-            height: 24
-        Widget:
-        BoxLayout:
-            size_hint_y: None
-            height: 52
-            spacing: 10
-            Tombol:
-                text: "Batal"
-                gaya: "netral"
-                gaya_teks: "teks"
-                on_release: root.manager.current = "kegiatan"
-            Tombol:
-                text: "Simpan"
-                on_release: root.simpan()
-        Widget:
-        Navigasi:
+    Layar:
+        MDTopAppBar:
+            title: "Tambah Kegiatan"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+            left_action_items: [["arrow-left", lambda x: setattr(root.manager, 'current', 'kegiatan')]]
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "16dp"
+            MDTextField:
+                id: inp_nama
+                hint_text: "Nama Kegiatan"
+                helper_text: "Contoh: Baca Qur'an 1 halaman"
+                helper_text_mode: "on_focus"
+                icon_right: "pencil"
+            MDTextField:
+                id: inp_jam
+                hint_text: "Jam (24 Jam)"
+                helper_text: "Format: HH:MM, misal 06:30"
+                helper_text_mode: "on_focus"
+                icon_right: "clock-outline"
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: "16dp"
+                Chip:
+                    id: btn_hari
+                    text: "Setiap hari"
+                    size_hint_x: 1
+                    on_release: root.menu_hari.open()
+                Chip:
+                    id: btn_kategori
+                    text: "Ibadah"
+                    size_hint_x: 1
+                    on_release: root.menu_kategori.open()
+            MDLabel:
+                id: lbl_pesan
+                text: ""
+                theme_text_color: "Error"
+                font_style: "Caption"
+                adaptive_height: True
+            Widget:
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: "16dp"
+                MDFlatButton:
+                    text: "BATAL"
+                    size_hint_x: 1
+                    on_release: root.manager.current = "kegiatan"
+                MDRaisedButton:
+                    text: "SIMPAN"
+                    size_hint_x: 1
+                    on_release: root.simpan()
+
+# ---------------------------------------------------------------------------
+# Timer
+# ---------------------------------------------------------------------------
 
 <TimerScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
-                text: "Timer Sesi Ibadah"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        Widget:
-        Label:
-            text: root.waktu
-            font_size: 64
-            bold: True
-            color: app.warna_teks
-        ProgressBar:
-            id: progres
-            max: 1
-            value: 0
-            size_hint_y: None
-            height: 18
-        Widget:
-        Label:
-            text: "Durasi (menit)"
-            size_hint_y: None
-            height: 26
-            color: app.warna_pudar
-            font_size: 13
-        Spinner:
-            id: spin_durasi
-            text: "15"
-            values: ["1", "5", "10", "15", "20", "30", "45", "60"]
-            size_hint_y: None
-            height: 48
-            on_text: root.reset_tampilan_durasi() if not root.event else None
-        Widget:
-        Label:
-            text: root.status
-            font_size: 15
-            color: app.warna_utama
-            size_hint_y: None
-            height: 40
-        BoxLayout:
-            size_hint_y: None
-            height: 52
-            spacing: 10
-            Tombol:
-                text: "Mulai"
-                on_release: root.mulai()
-            Tombol:
-                text: "Jeda"
-                gaya: "netral"
-                gaya_teks: "teks"
-                on_release: root.jeda()
-            Tombol:
-                text: "Ulang"
-                gaya: "netral"
-                gaya_teks: "teks"
-                on_release: root.ulang()
-        Widget:
-        Label:
-            text: root.total_hari_ini
-            font_size: 14
-            color: app.warna_pudar
-            size_hint_y: None
-            height: 30
-        Widget:
+    Layar:
+        MDTopAppBar:
+            title: "Timer Ibadah"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "20dp"
+            MDLabel:
+                text: "Sediakan waktu tenang untuk ibadah, tilawah, atau belajar."
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                halign: "center"
+                adaptive_height: True
+            AnchorLayout:
+                size_hint_y: None
+                height: "300dp"
+                anchor_x: "center"
+                anchor_y: "center"
+                FloatLayout:
+                    size_hint: None, None
+                    size: min(dp(250), self.parent.width - dp(16)), min(dp(250), self.parent.height - dp(16))
+                    CircularProgress:
+                        id: progres
+                        value: root.progress
+                        size_hint: None, None
+                        size: min(dp(230), self.parent.width), min(dp(230), self.parent.height)
+                        pos_hint: {"center_x": .5, "center_y": .5}
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        size_hint: None, None
+                        size: min(dp(190), self.parent.width - dp(20)), "92dp"
+                        pos_hint: {"center_x": .5, "center_y": .5}
+                        spacing: "2dp"
+                        MDLabel:
+                            text: root.waktu
+                            font_style: "H3"
+                            bold: True
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
+                        MDLabel:
+                            text: root.status
+                            font_style: "Caption"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
+                            shorten: True
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: "12dp"
+                MDLabel:
+                    text: "Durasi (menit):"
+                    adaptive_width: True
+                    pos_hint: {"center_y": .5}
+                Chip:
+                    id: btn_durasi
+                    text: "15 menit"
+                    on_release: root.menu.open()
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: "12dp"
+                MDRaisedButton:
+                    text: "Mulai"
+                    size_hint_x: 1
+                    on_release: root.mulai()
+                MDFlatButton:
+                    text: "Jeda"
+                    size_hint_x: 1
+                    on_release: root.jeda()
+                MDFlatButton:
+                    text: "Ulang"
+                    size_hint_x: 1
+                    on_release: root.ulang()
+            MDLabel:
+                text: root.total_hari_ini
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                halign: "center"
+                adaptive_height: True
         Navigasi:
+            layar_aktif: "timer"
+
+# ---------------------------------------------------------------------------
+# Tasbih
+# ---------------------------------------------------------------------------
 
 <TasbihScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
-                text: "Tasbih Digital"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        Widget:
-        Label:
-            text: "Dzikir"
-            size_hint_y: None
-            height: 24
-            color: app.warna_pudar
-            font_size: 13
-        Spinner:
-            id: spin_dzikir
-            text: "Subhanallah"
-            values: ["Subhanallah", "Alhamdulillah", "Allahu Akbar", "Astaghfirullah", "La ilaha illallah"]
-            size_hint_y: None
-            height: 44
-        Label:
-            text: "Target"
-            size_hint_y: None
-            height: 24
-            color: app.warna_pudar
-            font_size: 13
-        Spinner:
-            id: spin_target
-            text: "33"
-            values: ["33", "99", "100", "1000", "Bebas"]
-            size_hint_y: None
-            height: 44
-            on_text: root.perbarui()
-        Widget:
-        Button:
-            text: root.hitungan_label
-            font_size: 72
-            bold: True
-            color: 1, 1, 1, 1
-            background_normal: ""
-            background_down: ""
-            background_color: app.warna_utama
-            size_hint_y: None
-            height: 230
-            on_press: root.tap()
-        Label:
-            text: root.progres_label
-            font_size: 16
-            color: app.warna_teks
-            size_hint_y: None
-            height: 30
-        Widget:
-        Tombol:
-            text: "Ulang Hitungan Hari Ini"
-            gaya: "netral"
-            gaya_teks: "teks"
-            on_release: root.ulang()
-        Widget:
-        Navigasi:
-
-<StatistikScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            padding: [10, 0]
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Tombol:
-                text: "< Kembali"
-                gaya: "aksen"
-                gaya_teks: "teks"
-                size_hint_x: 0.32
-                font_size: 13
-                on_release: root.manager.current = "pengaturan"
-            Label:
-                text: "Statistik"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        ScrollView:
-            GridLayout:
-                id: grid_stat
-                cols: 1
+    Layar:
+        MDTopAppBar:
+            title: "Tasbih Digital"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "16dp"
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: "16dp"
+                Chip:
+                    id: btn_dzikir
+                    text: "Subhanallah"
+                    size_hint_x: 1
+                    on_release: root.menu_dzikir.open()
+                Chip:
+                    id: btn_target
+                    text: "33"
+                    size_hint_x: 0.5
+                    on_release: root.menu_target.open()
+            AnchorLayout:
                 size_hint_y: None
-                height: self.minimum_height
-                spacing: 8
-                padding: [12, 12]
+                height: "300dp"
+                anchor_x: "center"
+                anchor_y: "center"
+                TasbihCircleButton:
+                    id: tasbih_button
+                    hitungan: root.hitungan
+                    target_teks: root.ids.btn_target.text
+                    size_hint: None, None
+                    size: min(dp(250), self.parent.width - dp(32)), min(dp(250), self.parent.height - dp(32))
+
+            MDLabel:
+                text: root.progres_label
+                font_style: "Subtitle1"
+                bold: True
+                halign: "center"
+                adaptive_height: True
+            MDFlatButton:
+                text: "Reset Hitungan Hari Ini"
+                theme_text_color: "Secondary"
+                pos_hint: {"center_x": .5}
+                on_release: root.ulang()
+        Navigasi:
+            layar_aktif: "tasbih"
+
+# ---------------------------------------------------------------------------
+# Doa
+# ---------------------------------------------------------------------------
 
 <DoaScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
+    Layar:
+        MDTopAppBar:
+            title: "Doa"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+            left_action_items: [["arrow-left", lambda x: setattr(root.manager, 'current', 'home')]]
+            right_action_items: [[root.tombol_favorit, lambda x: root.toggle_favorit()]]
+        MDLabel:
+            text: root.nomor
+            font_style: "Caption"
+            theme_text_color: "Secondary"
+            halign: "center"
             size_hint_y: None
-            height: 60
-            padding: [10, 0]
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Tombol:
-                text: "< Kembali"
-                gaya: "aksen"
-                gaya_teks: "teks"
-                size_hint_x: 0.32
-                font_size: 13
-                on_release: root.manager.current = "pengaturan"
-            Label:
-                text: "Bacaan Doa"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        ScrollView:
-            BoxLayout:
+            height: "24dp"
+        MDScrollView:
+            Kartu:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
-                padding: [22, 18]
-                spacing: 12
-                Label:
+                padding: "24dp"
+                spacing: "14dp"
+                margin: "16dp"
+                MDLabel:
                     text: root.judul
-                    font_size: 21
+                    font_style: "H6"
                     bold: True
-                    color: app.warna_teks
-                    size_hint_y: None
-                    height: 36
-                Widget:
-                    size_hint_y: None
-                    height: 6
-                Label:
+                    halign: "center"
+                    adaptive_height: True
+                MDLabel:
                     text: root.arab
                     font_name: app.font_arab
-                    font_size: 27
-                    color: app.warna_teks
+                    font_size: "32sp"
+                    halign: "right"
+                    valign: "middle"
+                    text_size: self.width, None
+                    shorten: False
+                    adaptive_height: True
+                GarisHias:
                     size_hint_y: None
-                    height: max(100, self.texture_size[1])
-                    text_size: self.width - 10, None
-                    halign: "center"
-                Label:
+                    height: "12dp"
+                MDLabel:
                     text: root.latin
-                    font_size: 15
+                    font_style: "Body2"
+                    theme_text_color: "Secondary"
                     italic: True
-                    color: app.warna_pudar
-                    size_hint_y: None
-                    height: max(50, self.texture_size[1])
-                    text_size: self.width, None
                     halign: "center"
-                Label:
+                    adaptive_height: True
+                MDLabel:
                     text: root.arti
-                    font_size: 15
-                    color: app.warna_teks
-                    size_hint_y: None
-                    height: max(60, self.texture_size[1])
-                    text_size: self.width, None
+                    font_style: "Body1"
                     halign: "center"
-                Widget:
-                    size_hint_y: None
-                    height: 12
-        BoxLayout:
-            size_hint_y: None
-            height: 50
-            spacing: 7
-            padding: [12, 6]
-            Tombol:
-                text: "‹ Sebelumnya"
-                gaya: "netral"
-                gaya_teks: "teks"
-                font_size: 12
+                    adaptive_height: True
+        MDBoxLayout:
+            adaptive_height: True
+            padding: "16dp"
+            spacing: "16dp"
+            MDFlatButton:
+                text: "SEBELUMNYA"
+                theme_text_color: "Secondary"
                 on_release: root.sebelumnya()
-            Tombol:
-                text: root.tombol_favorit
-                gaya: "utama_muda"
-                gaya_teks: "teks"
-                font_size: 11
-                on_release: root.toggle_favorit()
-            Tombol:
-                text: "Acak"
-                gaya: "aksen"
-                gaya_teks: "teks"
-                font_size: 12
+            Widget:
+            MDRaisedButton:
+                text: "ACAK"
                 on_release: root.acak()
-            Tombol:
-                text: "Berikutnya ›"
-                gaya: "netral"
-                gaya_teks: "teks"
-                font_size: 12
+            Widget:
+            MDFlatButton:
+                text: "BERIKUTNYA"
+                theme_text_color: "Secondary"
                 on_release: root.berikutnya()
 
+# ---------------------------------------------------------------------------
+# Kiblat
+# ---------------------------------------------------------------------------
+
 <KiblatScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            padding: [10, 0]
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Tombol:
-                text: "< Kembali"
-                gaya: "aksen"
-                gaya_teks: "teks"
-                size_hint_x: 0.32
-                font_size: 13
-                on_release: root.manager.current = "pengaturan"
-            Label:
-                text: "Arah Kiblat"
-                font_size: 22
+    Layar:
+        MDTopAppBar:
+            title: "Arah Kiblat"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+            left_action_items: [["arrow-left", lambda x: setattr(root.manager, 'current', 'home')]]
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "24dp"
+            spacing: "16dp"
+            MDLabel:
+                text: root.info
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                halign: "center"
+                adaptive_height: True
+            MDLabel:
+                text: root.derajat
+                font_style: "H3"
+                theme_text_color: "Custom"
+                text_color: app.warna_emas
                 bold: True
-                color: 1, 1, 1, 1
-        Widget:
-        Label:
-            text: root.info
-            font_size: 15
-            color: app.warna_teks
-            size_hint_y: None
-            height: 30
-        Label:
-            text: root.derajat
-            font_size: 46
-            bold: True
-            color: app.warna_utama
-            size_hint_y: None
-            height: 64
-        Widget:
-        KompasKiblat:
-            id: kompas
-            size_hint: None, None
-            size: 280, 280
-            pos_hint: {"center_x": 0.5}
-        Widget:
-        Label:
-            text: root.keterangan
-            font_size: 14
-            color: app.warna_pudar
-            size_hint_y: None
-            height: 90
-            text_size: self.width, None
-            halign: "center"
-        Widget:
+                halign: "center"
+                adaptive_height: True
+            FloatLayout:
+                KompasKiblat:
+                    id: kompas
+                    size_hint: None, None
+                    size: "270dp", "270dp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            MDLabel:
+                text: root.keterangan
+                font_style: "Body2"
+                theme_text_color: "Secondary"
+                halign: "center"
+                adaptive_height: True
+
+<BadgeCard>:
+    size_hint_y: None
+    height: "104dp"
+    padding: "10dp"
+    orientation: "vertical"
+    radius: [14]
+    elevation: 0
+    md_bg_color: app.warna_emas_soft if root.unlocked else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_kertas_dim)
+    MDLabel:
+        text: root.nama
+        font_style: "Subtitle2"
+        bold: True
+        halign: "center"
+        theme_text_color: "Custom"
+        text_color: app.warna_tinta if root.unlocked else app.theme_cls.disabled_hint_text_color
+    MDLabel:
+        text: root.deskripsi
+        font_style: "Caption"
+        halign: "center"
+        theme_text_color: "Custom"
+        text_color: app.warna_tinta if root.unlocked else app.theme_cls.disabled_hint_text_color
+
+# ---------------------------------------------------------------------------
+# Statistik
+# ---------------------------------------------------------------------------
+
+<StatistikScreen>:
+    Layar:
+        MDTopAppBar:
+            title: "Statistik"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+            left_action_items: [["arrow-left", lambda x: setattr(root.manager, 'current', 'home')]]
+        MDScrollView:
+            MDBoxLayout:
+                orientation: "vertical"
+                padding: "16dp"
+                spacing: "16dp"
+                adaptive_height: True
+                MDLabel:
+                    text: "Ringkasan"
+                    font_style: "H6"
+                    bold: True
+                    adaptive_height: True
+                MDBoxLayout:
+                    id: grid_stat
+                    orientation: "vertical"
+                    spacing: "8dp"
+                    adaptive_height: True
+                MDLabel:
+                    text: "Aktivitas 7 Hari Terakhir"
+                    font_style: "H6"
+                    bold: True
+                    adaptive_height: True
+                Kartu:
+                    size_hint_y: None
+                    height: "150dp"
+                    padding: "16dp"
+                    WeeklyChart:
+                        id: weekly_chart
+                MDLabel:
+                    text: "Pencapaian"
+                    font_style: "H6"
+                    bold: True
+                    adaptive_height: True
+                MDGridLayout:
+                    id: badge_grid
+                    cols: 2
+                    spacing: "8dp"
+                    adaptive_height: True
+
+# ---------------------------------------------------------------------------
+# Pengaturan
+# ---------------------------------------------------------------------------
 
 <PengaturanScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        BoxLayout:
-            size_hint_y: None
-            height: 60
-            canvas.before:
-                Color:
-                    rgba: app.warna_utama
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            Label:
-                text: "Lainnya"
-                font_size: 22
-                bold: True
-                color: 1, 1, 1, 1
-        ScrollView:
-            BoxLayout:
+    Layar:
+        MDTopAppBar:
+            title: "Pengaturan"
+            elevation: 0
+            md_bg_color: app.theme_cls.primary_dark
+        MDScrollView:
+            MDBoxLayout:
                 orientation: "vertical"
-                size_hint_y: None
-                height: self.minimum_height
-                padding: [15, 15]
-                spacing: 8
-                Label:
-                    text: "Alarm Pengingat"
-                    size_hint_y: None
-                    height: 28
-                    bold: True
-                    color: app.warna_teks
-                BoxLayout:
-                    size_hint_y: None
-                    height: 64
-                    spacing: 8
-                    Label:
-                        text: "Bunyikan pengingat sebelum waktu sholat & kegiatan (saat app terbuka)"
-                        font_size: 12
-                        color: app.warna_pudar
-                        text_size: self.width, None
-                        halign: "left"
-                        valign: "middle"
-                    Switch:
-                        id: sw_alarm
-                        on_active: root.ubah_alarm(self, self.active)
-                BoxLayout:
-                    size_hint_y: None
-                    height: 48
-                    spacing: 8
-                    Label:
-                        text: "Ingatkan H- (menit):"
-                        font_size: 13
-                        color: app.warna_teks
-                    Spinner:
-                        id: spin_alarm_menit
-                        text: "10"
-                        values: ["5", "10", "15", "30"]
-                        size_hint_x: 0.35
-                        on_text: root.pilih_menit()
-                Widget:
-                    size_hint_y: None
-                    height: 18
-                Label:
-                    text: "Lokasi Jadwal Sholat"
-                    size_hint_y: None
-                    height: 28
-                    bold: True
-                    color: app.warna_teks
-                Tombol:
-                    text: "Deteksi Lokasi Otomatis (GPS/IP)"
-                    size_hint_y: None
-                    height: 48
-                    font_size: 13
-                    on_release: root.deteksi_lokasi()
-                Label:
-                    id: lbl_lokasi
-                    text: ""
-                    font_size: 12
-                    color: app.warna_pudar
-                    size_hint_y: None
-                    height: 44
-                    text_size: self.width, None
-                    halign: "left"
-                Spinner:
-                    id: spin_kota
-                    text: "Jakarta"
-                    size_hint_y: None
-                    height: 46
-                Label:
-                    text: "(pakai pilihan manual + tombol di bawah bila otomatis meleset)"
-                    font_size: 11
-                    italic: True
-                    size_hint_y: None
-                    height: 24
-                    color: app.warna_pudar
-                Tombol:
-                    text: "Simpan Kota Manual"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 48
-                    font_size: 13
-                    on_release: root.simpan_kota()
-                Widget:
-                    size_hint_y: None
-                    height: 18
-                Label:
-                    text: "Koleksi doa pendek • bisa disimpan sebagai favorit"
-                    font_size: 11
-                    italic: True
-                    color: app.warna_pudar
-                    size_hint_y: None
-                    height: 24
-                Tombol:
-                    text: "Bacaan Doa Harian"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 48
-                    font_size: 14
-                    on_release: root.manager.current = "doa"
-                Tombol:
-                    text: "Arah Kiblat"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 48
-                    font_size: 14
-                    on_release: root.manager.current = "kiblat"
-                Tombol:
-                    text: "Lihat Statistik"
-                    gaya: "utama_muda"
-                    gaya_teks: "teks"
-                    size_hint_y: None
-                    height: 48
-                    font_size: 14
-                    on_release: root.manager.current = "statistik"
-                Widget:
-                    size_hint_y: None
-                    height: 18
-                Label:
-                    text: "Mode Gelap"
-                    size_hint_y: None
-                    height: 28
-                    bold: True
-                    color: app.warna_teks
-                BoxLayout:
-                    size_hint_y: None
-                    height: 60
-                    spacing: 10
-                    Label:
-                        text: "Tampilan gelap (aktif setelah app dibuka ulang)"
-                        font_size: 13
-                        color: app.warna_pudar
-                        text_size: self.width, None
-                        halign: "left"
-                        valign: "middle"
-                    Switch:
-                        id: sw_gelap
-                        on_active: root.ubah_mode(self, self.active)
-                Label:
-                    id: lbl_status
-                    text: ""
-                    color: app.warna_teks
-                    font_size: 13
-                    size_hint_y: None
-                    height: 44
-                Widget:
-                    size_hint_y: None
-                    height: 14
+                padding: "16dp"
+                spacing: "16dp"
+                adaptive_height: True
+                Kartu:
+                    orientation: "vertical"
+                    padding: "16dp"
+                    spacing: "12dp"
+                    adaptive_height: True
+                    MDLabel:
+                        text: "Pengingat"
+                        font_style: "Subtitle1"
+                        bold: True
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        MDLabel:
+                            text: "Alarm sholat & kegiatan"
+                            font_style: "Body2"
+                        MDSwitch:
+                            id: sw_alarm
+                            on_active: root.ubah_alarm(self, self.active)
+                    MDBoxLayout:
+                        adaptive_height: True
+                        MDLabel:
+                            text: "Ingatkan sebelum (menit)"
+                            font_style: "Body2"
+                        Chip:
+                            id: btn_alarm_menit
+                            text: "10"
+                            on_release: root.menu_alarm.open()
+                Kartu:
+                    orientation: "vertical"
+                    padding: "16dp"
+                    spacing: "12dp"
+                    adaptive_height: True
+                    MDLabel:
+                        text: "Lokasi"
+                        font_style: "Subtitle1"
+                        bold: True
+                        adaptive_height: True
+                    MDFlatButton:
+                        text: "Deteksi lokasi otomatis"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primary_color
+                        on_release: root.deteksi_lokasi()
+                    MDLabel:
+                        id: lbl_lokasi
+                        text: ""
+                        font_style: "Caption"
+                        theme_text_color: "Secondary"
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        spacing: "12dp"
+                        Chip:
+                            id: btn_kota
+                            text: "Jakarta"
+                            size_hint_x: 1
+                            on_release: root.menu_kota.open()
+                Kartu:
+                    orientation: "vertical"
+                    padding: "16dp"
+                    spacing: "12dp"
+                    adaptive_height: True
+                    MDLabel:
+                        text: "Tema"
+                        font_style: "Subtitle1"
+                        bold: True
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        MDLabel:
+                            text: "Mode Gelap"
+                            font_style: "Body2"
+                        MDSwitch:
+                            id: sw_gelap
+                            on_active: root.ubah_mode(self, self.active)
+                    MDLabel:
+                        text: "Warna Utama"
+                        font_style: "Body2"
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        spacing: "8dp"
+                        MDIconButton:
+                            icon: "circle"
+                            theme_text_color: "Custom"
+                            text_color: 0.075, 0.439, 0.388, 1
+                            on_release: root.ubah_warna("Teal")
+                        MDIconButton:
+                            icon: "circle"
+                            theme_text_color: "Custom"
+                            text_color: 0.247, 0.318, 0.709, 1
+                            on_release: root.ubah_warna("Indigo")
+                        MDIconButton:
+                            icon: "circle"
+                            theme_text_color: "Custom"
+                            text_color: 0.878, 0.365, 0.145, 1
+                            on_release: root.ubah_warna("DeepOrange")
+                        MDIconButton:
+                            icon: "circle"
+                            theme_text_color: "Custom"
+                            text_color: 0.475, 0.333, 0.282, 1
+                            on_release: root.ubah_warna("Brown")
+                    MDLabel:
+                        id: lbl_status
+                        text: ""
+                        font_style: "Caption"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primary_color
+                        adaptive_height: True
         Navigasi:
+            layar_aktif: "pengaturan"
