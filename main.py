@@ -48,17 +48,17 @@ BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
          "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
 
 PALET = {
-    "teal": get_color_from_hex("#127063"),
-    "teal_soft": get_color_from_hex("#DCEAE4"),
-    "emas": get_color_from_hex("#C99A3E"),
-    "emas_soft": get_color_from_hex("#F1E2BB"),
-    "kertas": get_color_from_hex("#F7F1E1"),
-    "kertas_dim": get_color_from_hex("#EEE4CC"),
-    "permukaan": get_color_from_hex("#FFFCF4"),
-    "malam": get_color_from_hex("#101A18"),
-    "malam_kartu": get_color_from_hex("#17251F"),
-    "ivory": get_color_from_hex("#EFE7D3"),
-    "tinta": get_color_from_hex("#16302C"),
+    "indigo": get_color_from_hex("#2E2A5C"),
+    "indigo_soft": get_color_from_hex("#E7E4F6"),
+    "amber": get_color_from_hex("#E0954A"),
+    "amber_soft": get_color_from_hex("#F7E4C9"),
+    "langit": get_color_from_hex("#F4F2FB"),
+    "langit_dim": get_color_from_hex("#E8E4F5"),
+    "permukaan": get_color_from_hex("#FFFFFF"),
+    "malam": get_color_from_hex("#121025"),
+    "malam_kartu": get_color_from_hex("#1C1935"),
+    "ivory": get_color_from_hex("#F2EFFA"),
+    "tinta": get_color_from_hex("#211D3D"),
 }
 
 KOTA_DEFAULT = "Jakarta"
@@ -504,7 +504,7 @@ class HomeScreen(MDScreen):
         kobar = "\U0001F525 " if streak > 0 else ""
         self.teks_streak = f"{selesai} dari {total} selesai  •  {kobar}streak {streak} hari"
         self.progres_hari = f"{persen}% hari ini"
-        self.ids.bar_progress.value = persen
+        self.ids.bar_progress.value = persen / 100
 
     def hapus_kegiatan(self, kegiatan_id):
         db.hapus(kegiatan_id)
@@ -763,7 +763,7 @@ class TasbihCircleButton(Widget):
         with self.canvas:
             app = MDApp.get_running_app()
             color = app.theme_cls.primary_color if app else (0.13, 0.59, 0.95, 1)
-            gold = app.warna_emas if app else (0.79, 0.60, 0.24, 1)
+            gold = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
 
             # Cincin 33 manik tasbih mengelilingi lingkaran utama, terisi
             # emas mengikuti kemajuan menuju target (atau berputar terus
@@ -878,17 +878,35 @@ class TasbihScreen(MDScreen):
         else:
             self.progres_label = f"{self.hitungan} / {teks_target}"
 
-def _gambar_bintang(cx, cy, r_luar, r_dalam_rasio=0.5, titik=16):
-    """Kembalikan daftar titik untuk bintang delapan penjuru (motif geometris
-    islami), dipakai beberapa widget dekoratif di bawah ini."""
-    hasil = []
-    r_dalam = r_luar * r_dalam_rasio
-    for i in range(titik):
-        sudut = math.pi * i / (titik / 2)
-        r = r_luar if i % 2 == 0 else r_dalam
-        hasil.append(cx + r * math.sin(sudut))
-        hasil.append(cy + r * math.cos(sudut))
-    return hasil
+_POSISI_BINTANG = [
+    (0.10, 0.80, 1.6), (0.22, 0.52, 1.0), (0.06, 0.30, 1.3), (0.32, 0.18, 0.9),
+    (0.52, 0.88, 1.1), (0.68, 0.60, 1.6), (0.86, 0.34, 1.0), (0.58, 0.14, 1.2),
+    (0.42, 0.68, 0.8), (0.92, 0.78, 1.1), (0.78, 0.90, 0.8), (0.16, 0.62, 0.7),
+]
+
+
+def _lukis_bintang_kecil(canvas, x0, y0, lebar, tinggi, warna):
+    """Taburkan titik-titik kecil menyerupai bintang di area (x0,y0,lebar,tinggi)."""
+    if lebar <= 0 or tinggi <= 0:
+        return
+    skala = min(lebar, tinggi)
+    with canvas:
+        Color(rgba=warna)
+        for fx, fy, fr in _POSISI_BINTANG:
+            r = max(1.0, fr * skala * 0.014)
+            Ellipse(pos=(x0 + fx * lebar - r, y0 + fy * tinggi - r), size=(r * 2, r * 2))
+
+
+def _lukis_bulan_sabit(canvas, cx, cy, r, warna_isi, warna_potong, offset_rasio=0.40):
+    """Gambar bulan sabit: lingkaran penuh lalu 'dimakan' lingkaran kedua
+    berwarna latar, menyisakan bentuk sabit -- tanpa perlu aset gambar."""
+    with canvas:
+        Color(rgba=warna_isi)
+        Ellipse(pos=(cx - r, cy - r), size=(r * 2, r * 2))
+        Color(rgba=warna_potong)
+        r2 = r * 0.90
+        cx2 = cx + r * offset_rasio
+        Ellipse(pos=(cx2 - r2, cy - r2), size=(r2 * 2, r2 * 2))
 
 
 class GarisHias(Widget):
@@ -904,9 +922,9 @@ class GarisHias(Widget):
         if self.width <= 0:
             return
         app = MDApp.get_running_app()
-        emas = app.warna_emas if app else (0.79, 0.60, 0.24, 1)
+        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
         with self.canvas:
-            Color(rgba=(emas[0], emas[1], emas[2], 0.55))
+            Color(rgba=(amber[0], amber[1], amber[2], 0.55))
             mid = self.center_x
             gap = min(16, self.width * 0.08)
             Line(points=[self.x, self.center_y, mid - gap, self.center_y], width=1.2)
@@ -915,9 +933,9 @@ class GarisHias(Widget):
             Ellipse(pos=(mid - r, self.center_y - r), size=(r * 2, r * 2))
 
 
-class SplashArt(Widget):
-    """Latar dekoratif splash screen: lengkung mihrab & bintang delapan
-    penjuru digambar lewat canvas, tanpa perlu aset gambar tambahan."""
+class HairlineDivider(Widget):
+    """Garis pemisah tipis satu piksel, dipakai antar baris checklist supaya
+    daftar terasa seperti satu list bersih, bukan tumpukan kotak berwarna."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -925,31 +943,19 @@ class SplashArt(Widget):
 
     def _gambar(self, *args):
         self.canvas.clear()
-        if self.width <= 0 or self.height <= 0:
+        if self.width <= 0:
             return
         app = MDApp.get_running_app()
-        emas = app.warna_emas if app else (0.79, 0.60, 0.24, 1)
+        gelap = app and app.theme_cls.theme_style == "Dark"
+        warna = (1, 1, 1, 0.08) if gelap else (0, 0, 0, 0.08)
         with self.canvas:
-            Color(rgba=(emas[0], emas[1], emas[2], 0.12))
-            r = min(self.width, self.height) * 0.6
-            Ellipse(pos=(self.center_x - r, self.center_y - r * 0.5), size=(r * 2, r * 1.1))
-
-            Color(rgba=(emas[0], emas[1], emas[2], 0.18))
-            lebar = min(self.width * 0.45, self.height * 0.32)
-            tinggi = lebar * 1.2
-            ax = self.center_x - lebar / 2
-            ay = self.y + self.height * 0.06
-            Ellipse(pos=(ax, ay + tinggi - lebar / 2), size=(lebar, lebar))
-            Rectangle(pos=(ax, ay), size=(lebar, max(0, tinggi - lebar / 2)))
-
-            Color(rgba=(emas[0], emas[1], emas[2], 0.45))
-            titik = _gambar_bintang(self.center_x, self.y + self.height * 0.7, min(self.width, self.height) * 0.07)
-            Line(points=titik, width=1.3, close=True)
+            Color(rgba=warna)
+            Line(points=[self.x, self.center_y, self.right, self.center_y], width=1)
 
 
-class KubahHero(Widget):
-    """Latar kartu 'ibadah berikutnya': lengkung kubah masjid + bintang
-    delapan penjuru sebagai motif, supaya kartu ini tidak tampil polos."""
+class SplashArt(Widget):
+    """Latar dekoratif splash screen: langit malam dengan bulan sabit &
+    taburan bintang, digambar lewat canvas tanpa aset gambar tambahan."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -960,30 +966,52 @@ class KubahHero(Widget):
         if self.width <= 0 or self.height <= 0:
             return
         app = MDApp.get_running_app()
-        dasar = app.theme_cls.primary_dark if app else (0.05, 0.31, 0.26, 1)
-        terang = app.theme_cls.primary_color if app else (0.07, 0.44, 0.39, 1)
-        emas = app.warna_emas if app else (0.79, 0.60, 0.24, 1)
+        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
+        dasar = app.warna_indigo if app else (0.18, 0.16, 0.36, 1)
+        _lukis_bintang_kecil(
+            self.canvas, self.x, self.y, self.width, self.height,
+            (amber[0], amber[1], amber[2], 0.6),
+        )
+        r = min(self.width, self.height) * 0.16
+        cx = self.center_x
+        cy = self.y + self.height * 0.7
+        _lukis_bulan_sabit(
+            self.canvas, cx, cy, r,
+            (amber[0], amber[1], amber[2], 0.92),
+            (dasar[0], dasar[1], dasar[2], 1),
+        )
+
+
+class LangitHero(Widget):
+    """Latar kartu 'ibadah berikutnya': langit malam dengan bulan sabit &
+    taburan bintang -- motif utama identitas visual IbadahKu sekarang."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(pos=self._gambar, size=self._gambar)
+
+    def _gambar(self, *args):
+        self.canvas.clear()
+        if self.width <= 0 or self.height <= 0:
+            return
+        app = MDApp.get_running_app()
+        dasar = app.theme_cls.primary_dark if app else (0.14, 0.13, 0.30, 1)
+        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
         with self.canvas:
             Color(rgba=dasar)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[22, 22, 22, 22])
-
-            Color(rgba=(terang[0], terang[1], terang[2], 0.55))
-            r = self.height * 0.9
-            cx = self.right - self.height * 0.30
-            cy = self.top + self.height * 0.05
-            Ellipse(pos=(cx - r / 2, cy - r), size=(r, r))
-
-            Color(rgba=(emas[0], emas[1], emas[2], 0.5))
-            lebar = self.height * 0.5
-            tinggi = lebar * 1.25
-            ax = self.right - self.height * 0.55 - lebar / 2
-            ay = self.y - tinggi * 0.35
-            Ellipse(pos=(ax, ay + tinggi - lebar / 2), size=(lebar, lebar))
-            Rectangle(pos=(ax, ay), size=(lebar, max(0, tinggi - lebar / 2)))
-
-            Color(rgba=(emas[0], emas[1], emas[2], 0.8))
-            titik = _gambar_bintang(self.x + self.width * 0.14, self.y + self.height * 0.24, self.height * 0.09)
-            Line(points=titik, width=1.3, close=True)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[24, 24, 24, 24])
+        _lukis_bintang_kecil(
+            self.canvas, self.x, self.y, self.width, self.height,
+            (amber[0], amber[1], amber[2], 0.55),
+        )
+        r = self.height * 0.32
+        cx = self.right - self.height * 0.40
+        cy = self.top - self.height * 0.28
+        _lukis_bulan_sabit(
+            self.canvas, cx, cy, r,
+            (amber[0], amber[1], amber[2], 0.88),
+            (dasar[0], dasar[1], dasar[2], 1),
+        )
 
 
 class WeeklyChart(Widget):
@@ -1018,7 +1046,7 @@ class WeeklyChart(Widget):
 
         app = MDApp.get_running_app()
         primary = app.theme_cls.primary_color if app else (0.13, 0.59, 0.95, 1)
-        emas = app.warna_emas if app else (0.79, 0.60, 0.24, 1)
+        emas = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
         puncak = max(values) if values else 0
         with self.canvas:
             Color(rgba=(0.5, 0.5, 0.5, 0.18))
@@ -1197,7 +1225,7 @@ class KompasKiblat(Widget):
             l.center = (cx + dx * (r + 12), cy + dy * (r + 12))
             l.color = app.theme_cls.text_color
         primer = app.theme_cls.primary_color
-        emas = app.warna_emas if hasattr(app, "warna_emas") else (0.79, 0.60, 0.24, 1)
+        emas = app.warna_amber if hasattr(app, "warna_amber") else (0.88, 0.58, 0.29, 1)
         self.canvas.clear()
         with self.canvas:
             Color(rgba=(primer[0], primer[1], primer[2], 0.4))
@@ -1327,12 +1355,12 @@ class IbadahKuApp(MDApp):
 
     # Token warna kustom (tidak berubah walau tema terang/gelap di-toggle,
     # dipakai widget kustom & sebagai aksen di atas primary_palette KivyMD)
-    warna_teal = ListProperty(PALET["teal"])
-    warna_teal_soft = ListProperty(PALET["teal_soft"])
-    warna_emas = ListProperty(PALET["emas"])
-    warna_emas_soft = ListProperty(PALET["emas_soft"])
-    warna_kertas = ListProperty(PALET["kertas"])
-    warna_kertas_dim = ListProperty(PALET["kertas_dim"])
+    warna_indigo = ListProperty(PALET["indigo"])
+    warna_indigo_soft = ListProperty(PALET["indigo_soft"])
+    warna_amber = ListProperty(PALET["amber"])
+    warna_amber_soft = ListProperty(PALET["amber_soft"])
+    warna_langit = ListProperty(PALET["langit"])
+    warna_langit_dim = ListProperty(PALET["langit_dim"])
     warna_permukaan = ListProperty(PALET["permukaan"])
     warna_malam = ListProperty(PALET["malam"])
     warna_malam_kartu = ListProperty(PALET["malam_kartu"])
@@ -1341,7 +1369,7 @@ class IbadahKuApp(MDApp):
 
     def build(self):
         self.theme_cls.material_style = "M3"
-        self.theme_cls.primary_palette = db.ambil_pengaturan("tema_warna", "Teal")
+        self.theme_cls.primary_palette = db.ambil_pengaturan("tema_warna", "Indigo")
         self.theme_cls.theme_style = "Dark" if db.ambil_pengaturan("mode_gelap", "0") == "1" else "Light"
         db.buat_tabel()
         self.font_arab = cari_font_arab()

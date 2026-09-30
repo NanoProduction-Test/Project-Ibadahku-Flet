@@ -1,13 +1,12 @@
 #:kivy 2.3.1
 
 # ---------------------------------------------------------------------------
-# Template dasar (dynamic class) supaya warna & bentuk konsisten di semua
-# layar tanpa mengulang kode yang sama berkali-kali.
+# Template dasar (dynamic class)
 # ---------------------------------------------------------------------------
 
 <Layar@MDBoxLayout>:
     orientation: "vertical"
-    md_bg_color: app.warna_malam if app.theme_cls.theme_style == "Dark" else app.warna_kertas
+    md_bg_color: app.warna_malam if app.theme_cls.theme_style == "Dark" else app.warna_langit
 
 <Kartu@MDCard>:
     md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
@@ -17,74 +16,126 @@
 <Chip@MDRaisedButton>:
     elevation: 0
     theme_text_color: "Custom"
-    md_bg_color: app.warna_teal_soft if app.theme_cls.theme_style != "Dark" else app.warna_malam_kartu
+    md_bg_color: app.warna_indigo_soft if app.theme_cls.theme_style != "Dark" else app.warna_malam_kartu
     text_color: app.warna_tinta if app.theme_cls.theme_style != "Dark" else app.warna_ivory
 
-<NavIconSlot@MDCard>:
-    size_hint: None, None
-    size: "44dp", "44dp"
-    radius: [22]
-    elevation: 0
-    md_bg_color: 0, 0, 0, 0
+<NavTab@MDBoxLayout>:
+    orientation: "vertical"
+    padding: "0dp"
+    spacing: "3dp"
 
 <Navigasi>:
     size_hint_y: None
-    height: "64dp"
-    padding: "10dp", "8dp"
-    spacing: "2dp"
+    height: "72dp"
+    padding: "0dp", "6dp"
+    spacing: "0dp"
     md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
-    elevation: 3
-    Widget:
-    NavIconSlot:
-        pos_hint: {"center_y": .5}
-        md_bg_color: app.warna_teal_soft if root.layar_aktif == "home" else (0, 0, 0, 0)
+    elevation: 4
+    NavTab:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "3dp"
+            padding: "20dp", "0dp"
+            MDBoxLayout:
+                md_bg_color: app.theme_cls.primary_color if root.layar_aktif == "home" else (0, 0, 0, 0)
         MDIconButton:
             icon: "home-variant" if root.layar_aktif == "home" else "home-outline"
             theme_icon_color: "Custom"
             icon_color: app.theme_cls.primary_color if root.layar_aktif == "home" else app.theme_cls.disabled_hint_text_color
-            pos_hint: {"center_x": .5, "center_y": .5}
+            pos_hint: {"center_x": .5}
             on_release: root.pindah("home")
-    Widget:
-    NavIconSlot:
-        pos_hint: {"center_y": .5}
-        md_bg_color: app.warna_teal_soft if root.layar_aktif == "kegiatan" else (0, 0, 0, 0)
+        MDLabel:
+            text: "Beranda"
+            font_style: "Caption"
+            halign: "center"
+            size_hint_y: None
+            height: "14dp"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.layar_aktif == "home" else app.theme_cls.disabled_hint_text_color
+    NavTab:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "3dp"
+            padding: "20dp", "0dp"
+            MDBoxLayout:
+                md_bg_color: app.theme_cls.primary_color if root.layar_aktif == "kegiatan" else (0, 0, 0, 0)
         MDIconButton:
             icon: "format-list-checks"
             theme_icon_color: "Custom"
             icon_color: app.theme_cls.primary_color if root.layar_aktif == "kegiatan" else app.theme_cls.disabled_hint_text_color
-            pos_hint: {"center_x": .5, "center_y": .5}
+            pos_hint: {"center_x": .5}
             on_release: root.pindah("kegiatan")
-    Widget:
-    NavIconSlot:
-        pos_hint: {"center_y": .5}
-        md_bg_color: app.warna_teal_soft if root.layar_aktif == "timer" else (0, 0, 0, 0)
+        MDLabel:
+            text: "Kegiatan"
+            font_style: "Caption"
+            halign: "center"
+            size_hint_y: None
+            height: "14dp"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.layar_aktif == "kegiatan" else app.theme_cls.disabled_hint_text_color
+    NavTab:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "3dp"
+            padding: "20dp", "0dp"
+            MDBoxLayout:
+                md_bg_color: app.theme_cls.primary_color if root.layar_aktif == "timer" else (0, 0, 0, 0)
         MDIconButton:
             icon: "timer-outline"
             theme_icon_color: "Custom"
             icon_color: app.theme_cls.primary_color if root.layar_aktif == "timer" else app.theme_cls.disabled_hint_text_color
-            pos_hint: {"center_x": .5, "center_y": .5}
+            pos_hint: {"center_x": .5}
             on_release: root.pindah("timer")
-    Widget:
-    NavIconSlot:
-        pos_hint: {"center_y": .5}
-        md_bg_color: app.warna_teal_soft if root.layar_aktif == "tasbih" else (0, 0, 0, 0)
+        MDLabel:
+            text: "Fokus"
+            font_style: "Caption"
+            halign: "center"
+            size_hint_y: None
+            height: "14dp"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.layar_aktif == "timer" else app.theme_cls.disabled_hint_text_color
+    NavTab:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "3dp"
+            padding: "20dp", "0dp"
+            MDBoxLayout:
+                md_bg_color: app.theme_cls.primary_color if root.layar_aktif == "tasbih" else (0, 0, 0, 0)
         MDIconButton:
             icon: "circle-double"
             theme_icon_color: "Custom"
             icon_color: app.theme_cls.primary_color if root.layar_aktif == "tasbih" else app.theme_cls.disabled_hint_text_color
-            pos_hint: {"center_x": .5, "center_y": .5}
+            pos_hint: {"center_x": .5}
             on_release: root.pindah("tasbih")
-    Widget:
-    NavIconSlot:
-        pos_hint: {"center_y": .5}
-        md_bg_color: app.warna_teal_soft if root.layar_aktif == "pengaturan" else (0, 0, 0, 0)
+        MDLabel:
+            text: "Tasbih"
+            font_style: "Caption"
+            halign: "center"
+            size_hint_y: None
+            height: "14dp"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.layar_aktif == "tasbih" else app.theme_cls.disabled_hint_text_color
+    NavTab:
+        MDBoxLayout:
+            size_hint_y: None
+            height: "3dp"
+            padding: "20dp", "0dp"
+            MDBoxLayout:
+                md_bg_color: app.theme_cls.primary_color if root.layar_aktif == "pengaturan" else (0, 0, 0, 0)
         MDIconButton:
             icon: "cog-outline"
             theme_icon_color: "Custom"
             icon_color: app.theme_cls.primary_color if root.layar_aktif == "pengaturan" else app.theme_cls.disabled_hint_text_color
-            pos_hint: {"center_x": .5, "center_y": .5}
+            pos_hint: {"center_x": .5}
             on_release: root.pindah("pengaturan")
-    Widget:
+        MDLabel:
+            text: "Atur"
+            font_style: "Caption"
+            halign: "center"
+            size_hint_y: None
+            height: "14dp"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.layar_aktif == "pengaturan" else app.theme_cls.disabled_hint_text_color
 
 # ---------------------------------------------------------------------------
 # Splash
@@ -117,7 +168,7 @@
                 text: "Pendamping Ibadah Harian"
                 font_style: "Subtitle1"
                 theme_text_color: "Custom"
-                text_color: app.warna_emas
+                text_color: app.warna_amber
                 halign: "center"
 
 # ---------------------------------------------------------------------------
@@ -150,7 +201,7 @@
                     font_style: "Caption"
                     halign: "right"
                     theme_text_color: "Custom"
-                    text_color: app.warna_emas
+                    text_color: app.warna_amber
         MDScrollView:
             MDBoxLayout:
                 orientation: "vertical"
@@ -160,7 +211,7 @@
                 FloatLayout:
                     size_hint_y: None
                     height: "192dp"
-                    KubahHero:
+                    LangitHero:
                         size_hint: 1, 1
                         pos_hint: {"x": 0, "y": 0}
                     MDBoxLayout:
@@ -173,7 +224,7 @@
                             font_style: "Caption"
                             bold: True
                             theme_text_color: "Custom"
-                            text_color: app.warna_emas
+                            text_color: app.warna_amber
                             adaptive_height: True
                         MDLabel:
                             text: root.countdown
@@ -194,8 +245,81 @@
                             font_style: "Caption"
                             italic: True
                             theme_text_color: "Custom"
-                            text_color: app.warna_emas_soft
+                            text_color: app.warna_amber_soft
                             adaptive_height: True
+                Kartu:
+                    orientation: "vertical"
+                    adaptive_height: True
+                    padding: "18dp"
+                    spacing: "10dp"
+                    MDBoxLayout:
+                        adaptive_height: True
+                        spacing: "14dp"
+                        CircularProgress:
+                            id: bar_progress
+                            value: 0
+                            size_hint: None, None
+                            size: "56dp", "56dp"
+                            pos_hint: {"center_y": .5}
+                        MDBoxLayout:
+                            orientation: "vertical"
+                            pos_hint: {"center_y": .5}
+                            MDLabel:
+                                text: "Checklist Hari Ini"
+                                font_style: "Subtitle1"
+                                bold: True
+                                adaptive_height: True
+                            MDLabel:
+                                text: root.teks_streak
+                                font_style: "Caption"
+                                theme_text_color: "Secondary"
+                                adaptive_height: True
+                        MDLabel:
+                            text: root.progres_hari
+                            font_style: "H6"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            size_hint_x: None
+                            width: "58dp"
+                            halign: "right"
+                    MDBoxLayout:
+                        id: grid_ceklis
+                        orientation: "vertical"
+                        adaptive_height: True
+                    MDBoxLayout:
+                        adaptive_height: True
+                        spacing: "8dp"
+                        padding: ["0dp", "4dp", "0dp", "0dp"]
+                        MDFlatButton:
+                            text: "+ Tambah"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            on_release: root.buka_popup_ceklis()
+                        Widget:
+                        MDFlatButton:
+                            text: "Selesaikan"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            on_release: root.selesaikan_semua()
+                        MDFlatButton:
+                            text: "Reset"
+                            theme_text_color: "Secondary"
+                            on_release: root.reset_ceklis_hari_ini()
+                Kartu:
+                    orientation: "vertical"
+                    adaptive_height: True
+                    padding: "18dp"
+                    spacing: "4dp"
+                    MDLabel:
+                        text: "Jadwal Hari Ini"
+                        font_style: "Subtitle1"
+                        bold: True
+                        adaptive_height: True
+                    MDBoxLayout:
+                        id: timeline
+                        orientation: "vertical"
+                        adaptive_height: True
                 MDBoxLayout:
                     size_hint_y: None
                     height: "84dp"
@@ -246,7 +370,7 @@
                     orientation: "vertical"
                     size_hint_y: None
                     height: "150dp"
-                    padding: "16dp"
+                    padding: "18dp"
                     MDLabel:
                         text: "Ayat Hari Ini"
                         font_style: "Caption"
@@ -272,150 +396,103 @@
                         font_style: "Overline"
                         theme_text_color: "Custom"
                         text_color: app.theme_cls.primary_color
-                MDLabel:
-                    text: "Jadwal Hari Ini"
-                    font_style: "Subtitle1"
-                    bold: True
-                    adaptive_height: True
-                MDBoxLayout:
-                    id: timeline
-                    orientation: "vertical"
-                    adaptive_height: True
-                    spacing: "8dp"
-                Kartu:
-                    orientation: "vertical"
-                    adaptive_height: True
-                    padding: "16dp"
-                    spacing: "8dp"
-                    MDLabel:
-                        text: "Checklist Hari Ini"
-                        font_style: "Subtitle1"
-                        bold: True
-                        adaptive_height: True
-                    MDBoxLayout:
-                        adaptive_height: True
-                        MDLabel:
-                            text: root.teks_streak
-                            font_style: "Caption"
-                            theme_text_color: "Secondary"
-                        MDLabel:
-                            text: root.progres_hari
-                            font_style: "Caption"
-                            halign: "right"
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                    MDProgressBar:
-                        id: bar_progress
-                        value: 0
-                    MDBoxLayout:
-                        id: grid_ceklis
-                        orientation: "vertical"
-                        adaptive_height: True
-                        spacing: "6dp"
-                        padding: "0dp", "6dp"
-                    MDBoxLayout:
-                        adaptive_height: True
-                        spacing: "8dp"
-                        padding: ["0dp", "8dp", "0dp", "0dp"]
-                        MDFlatButton:
-                            text: "+ Tambah"
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            on_release: root.buka_popup_ceklis()
-                        Widget:
-                        MDFlatButton:
-                            text: "Selesaikan"
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            on_release: root.selesaikan_semua()
-                        MDFlatButton:
-                            text: "Reset"
-                            theme_text_color: "Secondary"
-                            on_release: root.reset_ceklis_hari_ini()
         Navigasi:
             layar_aktif: "home"
 
 <BarisTimeline>:
     size_hint_y: None
-    height: "48dp"
+    height: "46dp"
+    orientation: "vertical"
     padding: "0dp"
     spacing: "0dp"
-    radius: [10]
     elevation: 0
-    md_bg_color: app.warna_teal_soft if self.is_jadwal else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
+    radius: [0]
+    md_bg_color: 0, 0, 0, 0
     MDBoxLayout:
-        size_hint_x: None
-        width: "4dp"
-        md_bg_color: app.theme_cls.primary_color if root.is_jadwal else app.warna_emas
-    MDLabel:
-        text: root.jam
-        font_style: "Subtitle2"
-        bold: True
-        size_hint_x: 0.28
-        padding: "12dp", "0dp"
-    MDLabel:
-        text: root.nama
-        font_style: "Body1"
-        size_hint_x: 0.72
+        size_hint_y: None
+        height: "38dp"
+        MDLabel:
+            text: root.jam
+            font_style: "Subtitle2"
+            bold: True
+            size_hint_x: 0.28
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.is_jadwal else app.warna_amber
+        MDLabel:
+            text: root.nama
+            font_style: "Body1"
+            size_hint_x: 0.72
+    HairlineDivider:
+        size_hint_y: None
+        height: "8dp"
 
 <BarisCeklis>:
     size_hint_y: None
-    height: "56dp"
+    height: "58dp"
+    orientation: "vertical"
     padding: "0dp"
     spacing: "0dp"
-    radius: [10]
     elevation: 0
-    md_bg_color: app.warna_teal_soft if root.selesai else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
+    radius: [0]
+    md_bg_color: 0, 0, 0, 0
     MDBoxLayout:
-        size_hint_x: None
-        width: "4dp"
-        md_bg_color: app.theme_cls.primary_color
-    MDIconButton:
-        icon: "check-circle" if root.selesai else "circle-outline"
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color if root.selesai else app.theme_cls.disabled_hint_text_color
-        on_release: root.on_release()
-    MDLabel:
-        text: root.data['nama'] if root.data else ""
-        font_style: "Body1"
-    MDIconButton:
-        icon: "trash-can-outline"
-        theme_text_color: "Hint"
-        on_release: root.hapus()
-
-<BarisCeklisKegiatan>:
-    size_hint_y: None
-    height: "56dp"
-    padding: "0dp"
-    spacing: "0dp"
-    radius: [10]
-    elevation: 0
-    md_bg_color: app.warna_emas_soft if root.selesai else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan)
-    MDBoxLayout:
-        size_hint_x: None
-        width: "4dp"
-        md_bg_color: app.warna_emas
-    MDIconButton:
-        icon: "check-circle" if root.selesai else "circle-outline"
-        theme_text_color: "Custom"
-        text_color: app.warna_emas if root.selesai else app.theme_cls.disabled_hint_text_color
-        on_release: root.on_release()
-    MDBoxLayout:
-        orientation: "vertical"
+        size_hint_y: None
+        height: "50dp"
+        spacing: "4dp"
+        MDIconButton:
+            icon: "check-circle" if root.selesai else "circle-outline"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.selesai else app.theme_cls.disabled_hint_text_color
+            on_release: root.on_release()
         MDLabel:
             text: root.data['nama'] if root.data else ""
             font_style: "Body1"
-            shorten: True
+        MDIconButton:
+            icon: "trash-can-outline"
+            theme_text_color: "Hint"
+            on_release: root.hapus()
+    HairlineDivider:
+        size_hint_y: None
+        height: "8dp"
+
+<BarisCeklisKegiatan>:
+    size_hint_y: None
+    height: "62dp"
+    orientation: "vertical"
+    padding: "0dp"
+    spacing: "0dp"
+    elevation: 0
+    radius: [0]
+    md_bg_color: 0, 0, 0, 0
+    MDBoxLayout:
+        size_hint_y: None
+        height: "54dp"
+        spacing: "4dp"
+        MDIconButton:
+            icon: "check-circle" if root.selesai else "circle-outline"
+            theme_text_color: "Custom"
+            text_color: app.warna_amber if root.selesai else app.theme_cls.disabled_hint_text_color
+            on_release: root.on_release()
+        MDBoxLayout:
+            orientation: "vertical"
+            MDLabel:
+                text: root.data['nama'] if root.data else ""
+                font_style: "Body1"
+                shorten: True
+            MDLabel:
+                text: f"{root.data['jam']}  •  {root.data['kategori']}" if root.data else ""
+                font_style: "Caption"
+                theme_text_color: "Secondary"
         MDLabel:
-            text: f"{root.data['jam']}  •  {root.data['kategori']}" if root.data else ""
+            text: "Pribadi"
             font_style: "Caption"
-            theme_text_color: "Secondary"
-    MDLabel:
-        text: "Kegiatan"
-        font_style: "Caption"
-        theme_text_color: "Secondary"
-        size_hint_x: .28
-        halign: "right"
+            theme_text_color: "Custom"
+            text_color: app.warna_amber
+            size_hint_x: 0.26
+            halign: "right"
+    HairlineDivider:
+        size_hint_y: None
+        height: "8dp"
 
 # ---------------------------------------------------------------------------
 # Kegiatan
@@ -431,49 +508,53 @@
         MDBoxLayout:
             orientation: "vertical"
             padding: "16dp"
+            spacing: "12dp"
             MDLabel:
                 text: "Atur pengingat pribadi untuk ibadah, belajar, atau rutinitas harian."
                 font_style: "Caption"
                 theme_text_color: "Secondary"
                 adaptive_height: True
             MDScrollView:
-                MDBoxLayout:
-                    id: daftar_kegiatan
+                Kartu:
                     orientation: "vertical"
-                    adaptive_height: True
-                    spacing: "8dp"
-                    padding: ["0dp", "16dp", "0dp", "0dp"]
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: "6dp", "4dp"
+                    id: daftar_kegiatan
         Navigasi:
             layar_aktif: "kegiatan"
 
 <BarisKegiatan>:
     size_hint_y: None
-    height: "72dp"
+    height: "70dp"
+    orientation: "vertical"
     padding: "0dp"
     spacing: "0dp"
-    radius: [10]
     elevation: 0
-    md_bg_color: app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_permukaan
+    radius: [0]
+    md_bg_color: 0, 0, 0, 0
     MDBoxLayout:
-        size_hint_x: None
-        width: "4dp"
-        md_bg_color: app.warna_emas
-    MDBoxLayout:
-        orientation: "vertical"
-        padding: "16dp", "8dp"
-        MDLabel:
-            text: root.data['nama'] if root.data else ""
-            font_style: "Subtitle1"
-            bold: True
-        MDLabel:
-            text: f"{root.data['jam']}  •  {root.data['hari']}  •  {root.data['kategori']}" if root.data else ""
-            font_style: "Caption"
-            theme_text_color: "Secondary"
-    MDIconButton:
-        icon: "trash-can-outline"
-        theme_text_color: "Hint"
-        pos_hint: {"center_y": .5}
-        on_release: root.hapus()
+        size_hint_y: None
+        height: "62dp"
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "10dp", "6dp"
+            MDLabel:
+                text: root.data['nama'] if root.data else ""
+                font_style: "Subtitle1"
+                bold: True
+            MDLabel:
+                text: f"{root.data['jam']}  •  {root.data['hari']}  •  {root.data['kategori']}" if root.data else ""
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+        MDIconButton:
+            icon: "trash-can-outline"
+            theme_text_color: "Hint"
+            pos_hint: {"center_y": .5}
+            on_release: root.hapus()
+    HairlineDivider:
+        size_hint_y: None
+        height: "8dp"
 
 <TambahScreen>:
     Layar:
@@ -635,18 +716,32 @@
             orientation: "vertical"
             padding: "24dp"
             spacing: "16dp"
-            MDBoxLayout:
-                adaptive_height: True
-                spacing: "16dp"
+            Kartu:
+                orientation: "horizontal"
+                size_hint_y: None
+                height: "54dp"
+                padding: "4dp"
                 Chip:
                     id: btn_dzikir
                     text: "Subhanallah"
-                    size_hint_x: 1
+                    elevation: 0
+                    md_bg_color: 0, 0, 0, 0
                     on_release: root.menu_dzikir.open()
+                Widget:
+                    size_hint_x: None
+                    width: "1dp"
+                    canvas:
+                        Color:
+                            rgba: (1, 1, 1, 0.12) if app.theme_cls.theme_style == "Dark" else (0, 0, 0, 0.10)
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
                 Chip:
                     id: btn_target
                     text: "33"
-                    size_hint_x: 0.5
+                    size_hint_x: 0.55
+                    elevation: 0
+                    md_bg_color: 0, 0, 0, 0
                     on_release: root.menu_target.open()
             AnchorLayout:
                 size_hint_y: None
@@ -774,7 +869,7 @@
                 text: root.derajat
                 font_style: "H3"
                 theme_text_color: "Custom"
-                text_color: app.warna_emas
+                text_color: app.warna_amber
                 bold: True
                 halign: "center"
                 adaptive_height: True
@@ -798,7 +893,7 @@
     orientation: "vertical"
     radius: [14]
     elevation: 0
-    md_bg_color: app.warna_emas_soft if root.unlocked else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_kertas_dim)
+    md_bg_color: app.warna_amber_soft if root.unlocked else (app.warna_malam_kartu if app.theme_cls.theme_style == "Dark" else app.warna_langit_dim)
     MDLabel:
         text: root.nama
         font_style: "Subtitle2"
@@ -962,18 +1057,18 @@
                         MDIconButton:
                             icon: "circle"
                             theme_text_color: "Custom"
-                            text_color: 0.075, 0.439, 0.388, 1
-                            on_release: root.ubah_warna("Teal")
-                        MDIconButton:
-                            icon: "circle"
-                            theme_text_color: "Custom"
-                            text_color: 0.247, 0.318, 0.709, 1
+                            text_color: 0.180, 0.165, 0.361, 1
                             on_release: root.ubah_warna("Indigo")
                         MDIconButton:
                             icon: "circle"
                             theme_text_color: "Custom"
-                            text_color: 0.878, 0.365, 0.145, 1
-                            on_release: root.ubah_warna("DeepOrange")
+                            text_color: 0.404, 0.227, 0.718, 1
+                            on_release: root.ubah_warna("DeepPurple")
+                        MDIconButton:
+                            icon: "circle"
+                            theme_text_color: "Custom"
+                            text_color: 0.376, 0.490, 0.545, 1
+                            on_release: root.ubah_warna("BlueGray")
                         MDIconButton:
                             icon: "circle"
                             theme_text_color: "Custom"
