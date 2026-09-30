@@ -1,0 +1,6 @@
+[project]
+name = "ibadahku"
+
+[tool.flet]
+org = "com.ibadahku"
+product_name = "IbadahKu"
