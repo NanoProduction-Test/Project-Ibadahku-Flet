@@ -1,12 +1,55 @@
 import os
 import sqlite3
+import tempfile
 from datetime import date, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Database harus berada di lokasi writable agar build Android dapat menyimpan
-# checklist, tasbih, timer, favorit, dan pengaturan.
-DATA_DIR = os.path.join(os.path.expanduser("~"), "IbadahKu")
-os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def _pilih_data_dir():
+    """Cari folder penyimpanan database yang BENAR-BENAR bisa ditulis.
+
+    Di laptop: ~/IbadahKu seperti biasa (data lama tetap ditemukan).
+    Di Android: HOME menunjuk ke /data yang terkunci sistem, jadi kita
+    jatuh ke folder internal aplikasi (khusus app kita, pasti boleh).
+    Setiap kandidat diuji dulu dengan menulis file kecil - tidak ada nebak-nebakan."""
+    kandidat = []
+
+    # 1. Folder rumah (desktop) - mis. C:\Users\Lenovo\IbadahKu
+    kandidat.append(os.path.join(os.path.expanduser("~"), "IbadahKu"))
+
+    # 2. Android: folder internal aplikasi (diketahui lewat nama paket)
+    try:
+        with open("/proc/self/cmdline", "rb") as f:
+            paket = f.read().split(b"\0")[0].decode(errors="ignore").strip()
+        paket = paket.split(":")[0]
+        if paket and "." in paket and "/" not in paket:
+            kandidat.append(os.path.join("/data/data", paket, "files", "IbadahKu"))
+    except OSError:
+        pass
+
+    # 3. Folder tempat database.py berada (di Android = folder app)
+    kandidat.append(BASE_DIR)
+
+    # 4-5. Cadangan terakhir
+    kandidat.append(os.path.join(os.getcwd(), "IbadahKu"))
+    kandidat.append(os.path.join(tempfile.gettempdir(), "IbadahKu"))
+
+    for k in kandidat:
+        try:
+            os.makedirs(k, exist_ok=True)
+            tes = os.path.join(k, ".tes-tulis")
+            with open(tes, "w") as f:
+                f.write("ok")
+            os.remove(tes)
+            return k          # lolos uji tulis -> pakai ini
+        except OSError:
+            continue          # tidak bisa ditulis -> coba kandidat berikutnya
+
+    raise RuntimeError("Tidak ada lokasi penyimpanan yang bisa ditulis.")
+
+
+DATA_DIR = _pilih_data_dir()
 DB = os.path.join(DATA_DIR, "ibadahku.db")
 BUNDLED_DB = os.path.join(BASE_DIR, "ibadahku.db")
 
@@ -247,7 +290,6 @@ def toggle_ceklis(item_id, tanggal):
             " WHERE tanggal = ? AND item_id = ?", (tanggal, item_id))
 
 
-
 def set_ceklis(item_id, tanggal, selesai):
     """Set status ceklis secara eksplisit; tidak bergantung pada toggle UI."""
     with sqlite3.connect(DB) as con:
@@ -312,7 +354,7 @@ def total_timer_hari_ini():
     return baris[0]
 
 
-# ---------------- tasbih (BARU) ----------------
+# ---------------- tasbih ----------------
 
 def simpan_tasbih(tanggal, tambahan):
     with sqlite3.connect(DB) as con:
@@ -335,7 +377,7 @@ def reset_tasbih(tanggal):
         con.execute("DELETE FROM tasbih_log WHERE tanggal = ?", (tanggal,))
 
 
-# ---------------- statistik (BARU) ----------------
+# ---------------- statistik ----------------
 
 def ringkasan_minggu(awal):
     """Total menit timer, tasbih, dan jumlah hari aktif sejak tanggal awal."""
@@ -360,11 +402,13 @@ def total_keseluruhan():
             "SELECT COALESCE(SUM(hitungan), 0) FROM tasbih_log").fetchone()[0]
     return menit, tasbih
 
+
 # ---------------- doa favorit ----------------
 
 def doa_favorit(nomor):
     with sqlite3.connect(DB) as con:
         return con.execute("SELECT 1 FROM doa_favorit WHERE nomor = ?", (nomor,)).fetchone() is not None
+
 
 def set_doa_favorit(nomor, aktif):
     with sqlite3.connect(DB) as con:
@@ -372,6 +416,7 @@ def set_doa_favorit(nomor, aktif):
             con.execute("INSERT OR IGNORE INTO doa_favorit (nomor) VALUES (?)", (nomor,))
         else:
             con.execute("DELETE FROM doa_favorit WHERE nomor = ?", (nomor,))
+
 
 def semua_doa_favorit():
     with sqlite3.connect(DB) as con:
@@ -386,10 +431,12 @@ def simpan_achievement(achievement_id, tanggal):
             "INSERT OR IGNORE INTO achievement (id, tercapai, tanggal) VALUES (?, 1, ?)",
             (achievement_id, tanggal))
 
+
 def ambil_achievement():
     with sqlite3.connect(DB) as con:
         return {r[0]: r[1] for r in con.execute(
             "SELECT id, tanggal FROM achievement WHERE tercapai = 1").fetchall()}
+
 
 # ---------------- ayat harian ----------------
 
@@ -399,11 +446,13 @@ def simpan_ayat(tanggal, surah, ayat, teks_arab, teks_indo):
             "INSERT OR REPLACE INTO ayat_cache VALUES (?, ?, ?, ?, ?)",
             (tanggal, surah, ayat, teks_arab, teks_indo))
 
+
 def ambil_ayat(tanggal):
     with sqlite3.connect(DB) as con:
         con.row_factory = sqlite3.Row
         return con.execute(
             "SELECT * FROM ayat_cache WHERE tanggal = ?", (tanggal,)).fetchone()
+
 
 # ---------------- data grafik mingguan ----------------
 
