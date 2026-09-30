@@ -1084,4 +1084,8 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.run(main, view=ft.AppView.WEB_BROWSER)
+    import sys
+    if "--web" in sys.argv:
+        ft.run(main, view=ft.AppView.WEB_BROWSER)
+    else:
+        ft.run(main)
