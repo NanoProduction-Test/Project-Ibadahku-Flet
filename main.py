@@ -1,1442 +1,1087 @@
-# pyright: reportMissingImports=false
-
-import datetime
+import asyncio
 import math
-import os
-import re
-import random
-import struct
-import threading
-import wave
+import sqlite3
+import time
+from datetime import date, datetime, timedelta
 
-from kivy.clock import Clock
-from kivy.config import Config
-from kivy.core.audio import SoundLoader
-from kivy.graphics import Color, Line, RoundedRectangle, Triangle, Rectangle, Ellipse
-from kivy.properties import ListProperty, NumericProperty, StringProperty, BooleanProperty, ObjectProperty
-from kivy.uix.screenmanager import ScreenManager
-from kivy.uix.widget import Widget
-from kivy.uix.label import Label
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.utils import platform, get_color_from_hex
+import flet as ft
 
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.card import MDCard
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.button import MDFlatButton, MDRaisedButton
-
+import achievements
 import database as db
 import prayertimes
 from doa import DOA
-try:
-    import achievements
-except ImportError:
-    class MockAchievements:
-        def evaluasi(self): return []
-        def semua_dengan_status(self): return []
-    achievements = MockAchievements()
 
-if platform != 'android' and platform != 'ios':
-    Config.set("graphics", "width", "400")
-    Config.set("graphics", "height", "700")
+# ============================================================
+#  DESAIN "ZAMRUD & EMAS" - versi mobile-friendly v5
+# ============================================================
 
-HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Ahad"]
-BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
-         "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+GOLD = "#C29B3C"
+DANGER = "#B3402E"
+FONT_ARAB = "NotoNaskh"
 
-PALET = {
-    "indigo": get_color_from_hex("#2E2A5C"),
-    "indigo_soft": get_color_from_hex("#E7E4F6"),
-    "amber": get_color_from_hex("#E0954A"),
-    "amber_soft": get_color_from_hex("#F7E4C9"),
-    "langit": get_color_from_hex("#F4F2FB"),
-    "langit_dim": get_color_from_hex("#E8E4F5"),
-    "permukaan": get_color_from_hex("#FFFFFF"),
-    "malam": get_color_from_hex("#121025"),
-    "malam_kartu": get_color_from_hex("#1C1935"),
-    "ivory": get_color_from_hex("#F2EFFA"),
-    "tinta": get_color_from_hex("#211D3D"),
+LIGHT = {
+    "bg": "#F7F3EA", "surface": "#FFFFFF", "surface2": "#EFE8D9",
+    "text": "#1B241F", "muted": "#7C7566", "line": "#E5DCC9",
 }
-
-KOTA_DEFAULT = "Jakarta"
-DAFTAR_KOTA = [
-    "Jakarta", "Bandung", "Bekasi", "Bogor", "Tangerang", "Depok",
-    "Semarang", "Yogyakarta", "Surabaya", "Malang",
-    "Medan", "Palembang", "Makassar", "Denpasar",
-]
+DARK = {
+    "bg": "#0D1310", "surface": "#15201A", "surface2": "#1D2B23",
+    "text": "#EFEDE3", "muted": "#93A096", "line": "#26362D",
+}
+ACCENTS = ["#0D5C46", "#155E75", "#8C2F39", "#4C3A8C", "#8A5A24"]
 
 AYAT_HARIAN = [
-    {"surah": "Al-Baqarah 2:286", "arab": "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا", "arti": "Allah tidak membebani seseorang melainkan sesuai dengan kesanggupannya."},
-    {"surah": "Al-Insyirah 94:6", "arab": "إِنَّ مَعَ الْعُسْرِ يُسْرًا", "arti": "Sesungguhnya bersama kesulitan ada kemudahan."},
-    {"surah": "Ali Imran 3:139", "arab": "وَلَا تَهِنُوا وَلَا تَحْزَنُوا وَأَنتُمُ الْأَعْلَوْنَ", "arti": "Janganlah kamu merasa lemah dan jangan pula bersedih, padahal kamu orang-orang yang paling tinggi (derajatnya)."},
-    {"surah": "Ath-Thalaq 65:3", "arab": "وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ", "arti": "Barangsiapa bertawakal kepada Allah, niscaya Allah akan mencukupkan keperluannya."},
-    {"surah": "Al-Baqarah 2:152", "arab": "فَاذْكُرُونِي أَذْكُرْكُمْ", "arti": "Maka ingatlah kepada-Ku, niscaya Aku akan mengingat kalian."},
-    {"surah": "Ar-Ra'd 13:28", "arab": "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "arti": "Ingatlah, hanya dengan mengingat Allah hati menjadi tenteram."},
-    {"surah": "Al-Ankabut 29:69", "arab": "وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا", "arti": "Orang-orang yang berjihad di jalan Kami, sungguh akan Kami tunjukkan jalan-jalan Kami."},
-    {"surah": "Ibrahim 14:7", "arab": "لَئِن شَكَرْتُمْ لَأَزِيدَنَّكُمْ", "arti": "Jika kamu bersyukur, niscaya Aku akan menambah (nikmat) kepadamu."},
-    {"surah": "Al-Hasyr 59:18", "arab": "يَا أَيُّهَا الَّذِينَ آمَنُوا اتَّقُوا اللَّهَ وَلْتَنظُرْ نَفْسٌ مَّا قَدَّمَتْ لِغَدٍ", "arti": "Wahai orang-orang yang beriman, bertakwalah kepada Allah dan hendaklah setiap jiwa memperhatikan apa yang telah diperbuatnya untuk hari esok."},
-    {"surah": "Taha 20:114", "arab": "وَقُل رَّبِّ زِدْنِي عِلْمًا", "arti": "Dan katakanlah, 'Ya Tuhanku, tambahkanlah ilmu kepadaku.'"},
+    ("Al-Insyirah", "94:5", "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا", "Karena sesungguhnya bersama kesulitan ada kemudahan."),
+    ("Ad-Duha", "93:11", "وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ", "Dan terhadap nikmat Tuhanmu, maka hendaklah engkau nyatakan dengan bersyukur."),
+    ("Al-Baqarah", "2:286", "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا", "Allah tidak membebani seseorang melainkan sesuai dengan kesanggupannya."),
+    ("Ar-Ra'd", "13:28", "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "Ingatlah, hanya dengan mengingat Allah hati menjadi tenteram."),
+    ("Al-Baqarah", "2:152", "فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ", "Maka ingatlah kepada-Ku, Aku pun akan ingat kepadamu. Bersyukurlah kepada-Ku dan janganlah kamu ingkar."),
+    ("Ali Imran", "3:139", "وَلَا تَهِنُوا وَلَا تَحْزَنُوا وَأَنْتُمُ الْأَعْلَوْنَ إِنْ كُنْتُمْ مُؤْمِنِينَ", "Janganlah kamu lemah dan jangan bersedih hati, padahal kamulah yang paling tinggi jika kamu beriman."),
+    ("At-Talaq", "65:3", "وَمَنْ يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ", "Barangsiapa bertawakal kepada Allah, niscaya Allah akan mencukupkan keperluannya."),
 ]
 
-try:
-    from plyer import notification, vibrator
-except ImportError:
-    notification = None
-    vibrator = None
+DZIKIR = ["Subhanallah", "Alhamdulillah", "Allahu Akbar", "La ilaha illallah"]
+HARI_ID = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+SINGKAT_HARI = {"Mon": "Sen", "Tue": "Sel", "Wed": "Rab", "Thu": "Kam",
+                "Fri": "Jum", "Sat": "Sab", "Sun": "Min"}
 
-# Arabic text support.
-# Kivy's SDL2 text provider receives the already-shaped visual string.
-# The bundled Noto Naskh Arabic font supplies the Arabic glyphs/diacritics.
-try:
-    import unicodedata
-    import arabic_reshaper
-    from bidi.algorithm import get_display
 
-    def siapkan_arab(teks):
-        if not teks:
-            return ""
-        teks = unicodedata.normalize("NFC", str(teks))
-        # Remove invisible bidi/control marks that can confuse manual shaping.
-        teks = "".join(
-            ch for ch in teks
-            if unicodedata.category(ch) != "Cf"
-            or ch in "\n\r\t"
-        )
-        shaped = arabic_reshaper.reshape(teks)
-        return get_display(shaped, base_dir="R")
-except ImportError:
-    def siapkan_arab(teks):
-        return str(teks or "")
+def today():
+    return date.today().isoformat()
 
-def kirim_notif(judul, pesan):
-    if notification is None:
-        return
-    try:
-        notification.notify(title=judul, message=pesan,
-                            app_name="IbadahKu", timeout=10)
-    except Exception:
-        pass
 
-def get_haptic():
-    if vibrator:
-        try:
-            vibrator.vibrate(0.05)
-        except Exception:
-            pass
+def nama_hari_ini():
+    return HARI_ID[date.today().weekday()]
 
-def cari_font_arab():
-    """Return a bundled Arabic-capable font, with safe Windows fallbacks."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    font_dir = os.path.join(base_dir, "fonts")
-    bundled_fonts = (
-        "NotoNaskhArabic-Regular.ttf",
-        "NotoNaskhArabicUI-Regular.ttf",
-        "NotoSansArabic-Regular.ttf",
-        "DejaVuSans.ttf",
-    )
-    for nama in bundled_fonts:
-        path = os.path.join(font_dir, nama)
-        if os.path.isfile(path):
-            return path
 
-    # Fallback only if a user runs an old copy without bundled fonts.
-    for path in (
-        r"C:\Windows\Fonts\NotoNaskhArabic-Regular.ttf",
-        r"C:\Windows\Fonts\NotoNaskhArabicUI-Regular.ttf",
-        r"C:\Windows\Fonts\NotoSansArabic-Regular.ttf",
-        r"C:\Windows\Fonts\segoeui.ttf",
-        r"C:\Windows\Fonts\arial.ttf",
-    ):
-        if os.path.isfile(path):
-            return path
+def format_tanggal():
+    bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
+             "Agustus", "September", "Oktober", "November", "Desember"][date.today().month - 1]
+    return f"{nama_hari_ini()}, {date.today().day} {bulan} {date.today().year}"
 
-    raise FileNotFoundError(
-        "Font Arab tidak ditemukan. Pastikan fonts/NotoNaskhArabic-Regular.ttf ada."
-    )
 
-def buat_file_bunyi(nama="beep.wav"):
-    if os.path.exists(nama):
-        return nama
-    fr, dur, jeda, n = 44100, 0.15, 0.12, 3
-    siklus = dur + jeda
-    with wave.open(nama, "w") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(fr)
-        for i in range(int(fr * siklus * n)):
-            t = i / fr
-            fase = t % siklus
-            nyala = fase < dur
-            amp = math.sin(math.pi * fase / dur) if nyala else 0.0
-            v = int(11000 * amp * math.sin(2 * math.pi * 880 * t))
-            w.writeframes(struct.pack("<h", v))
-    return nama
-
-def _baca_jadwal_cache():
-    kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-    lat = db.ambil_pengaturan("lat")
-    kunci = ("auto:" + kota) if lat else kota
-    return db.ambil_jadwal(kunci, datetime.date.today().isoformat())
-
-class Navigasi(MDBoxLayout):
-    layar_aktif = StringProperty("home")
-
-    def pindah(self, nama):
-        sm = MDApp.get_running_app().root
-        if sm.current != nama:
-            sm.current = nama
-
-class BarisTimeline(MDCard):
-    jam = StringProperty()
-    nama = StringProperty()
-    is_jadwal = BooleanProperty(False)
-
-
-class BarisCeklisKegiatan(MDCard):
-    data = ObjectProperty()
-    selesai = BooleanProperty(False)
-    layar = ObjectProperty()
-
-    def on_release(self):
-        if not self.data or not self.layar:
-            return
-        tanggal = datetime.date.today().isoformat()
-        db.set_kegiatan_selesai(self.data["id"], tanggal, not self.selesai)
-        self.layar.muat_ceklis()
-
-    def hapus(self):
-        if self.data and self.layar:
-            self.layar.hapus_kegiatan(self.data["id"])
-
-
-class BarisCeklis(MDCard):
-    data = ObjectProperty()
-    selesai = BooleanProperty(False)
-    layar = ObjectProperty()
-    
-    def on_release(self):
-        tanggal = datetime.date.today().isoformat()
-        db.set_ceklis(self.data['id'], tanggal, not self.selesai)
-        self.layar.muat_ceklis()
-        
-    def hapus(self):
-        app = MDApp.get_running_app()
-        self.dialog = MDDialog(
-            title="Hapus item?",
-            text="Item ini akan disembunyikan dari daftar.",
-            buttons=[
-                MDFlatButton(
-                    text="BATAL",
-                    on_release=lambda x: self.dialog.dismiss()
-                ),
-                MDFlatButton(
-                    text="HAPUS",
-                    text_color=app.theme_cls.error_color,
-                    on_release=lambda x: self._proses_hapus()
-                ),
-            ],
-        )
-        self.dialog.open()
-        
-    def _proses_hapus(self):
-        db.hapus_item_ceklis(self.data['id'])
-        self.dialog.dismiss()
-        self.layar.muat_ceklis()
-
-class PopupCeklis:
-    def __init__(self, layar):
-        self.layar = layar
-        from kivymd.uix.textfield import MDTextField
-        self.input = MDTextField(hint_text="contoh: Sholat dhuha")
-        self.dialog = MDDialog(
-            title="Tambah Item Ceklis",
-            type="custom",
-            content_cls=self.input,
-            buttons=[
-                MDFlatButton(
-                    text="BATAL",
-                    on_release=lambda x: self.dialog.dismiss()
-                ),
-                MDFlatButton(
-                    text="SIMPAN",
-                    theme_text_color="Custom",
-                    text_color=MDApp.get_running_app().theme_cls.primary_color,
-                    on_release=lambda x: self.simpan()
-                ),
-            ],
-        )
-        
-    def open(self):
-        self.dialog.open()
-        
-    def simpan(self):
-        nama = self.input.text.strip()
-        if nama:
-            db.tambah_item_ceklis(nama)
-        self.dialog.dismiss()
-        self.layar.muat_ceklis()
-
-class PopupAlarm:
-    def __init__(self, judul, pesan):
-        self.dialog = MDDialog(
-            title=judul,
-            text=pesan,
-            buttons=[
-                MDFlatButton(
-                    text="TUTUP",
-                    on_release=lambda x: self.dialog.dismiss()
-                )
-            ],
-        )
-        Clock.schedule_once(lambda dt: self.dialog.dismiss(), 45)
-        
-    def open(self):
-        self.dialog.open()
-
-class SplashScreen(MDScreen):
-    def on_enter(self):
-        Clock.schedule_once(self.pindah, 2.5)
-        
-    def pindah(self, dt):
-        self.manager.current = "home"
-
-class HomeScreen(MDScreen):
-    tanggal = StringProperty("")
-    tanggal_hijri = StringProperty("")
-    countdown = StringProperty("Memuat jadwal...")
-    teks_streak = StringProperty("")
-    ringkasan = StringProperty("")
-    progres_hari = StringProperty("")
-    kutipan = StringProperty("")
-    ayat_hari = StringProperty("")
-    surah_hari = StringProperty("")
-    arti_hari = StringProperty("")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.jadwal = None
-        self.jam_event = None
-        self.sedang_memuat = False
-        self.kegiatan_hari_ini = []
-        self.notif_terkirim = set()
-        self._tanggal_aktif = None
-
-    def on_enter(self):
-        hari = datetime.date.today()
-        self._tanggal_aktif = hari.isoformat()
-        self.tanggal = f"{HARI[hari.weekday()]}, {hari.day} {BULAN[hari.month - 1]} {hari.year}"
-        
-        # simple random for the day
-        idx = hari.toordinal() % len(AYAT_HARIAN)
-        ayat = AYAT_HARIAN[idx]
-        self.ayat_hari = siapkan_arab(ayat["arab"])
-        self.surah_hari = ayat["surah"]
-        self.arti_hari = ayat["arti"]
-        
-        # simple pseudo hijri
-        y, m, d = hari.year, hari.month, hari.day
-        jd = int((1461 * (y + 4800 + int((m - 14) / 12))) / 4) + int((367 * (m - 2 - 12 * (int((m - 14) / 12)))) / 12) - int((3 * (int((y + 4900 + int((m - 14) / 12)) / 100))) / 4) + d - 32075
-        l = jd - 1948440 + 10632
-        n = int((l - 1) / 10631)
-        l = l - 10631 * n + 354
-        j = (int((10985 - l) / 5316)) * (int((50 * l) / 17719)) + (int(l / 5670)) * (int((43 * l) / 15238))
-        l = l - (int((30 - j) / 15)) * (int((17719 * j) / 50)) - (int(j / 16)) * (int((15238 * j) / 43)) + 29
-        hm = int((24 * l) / 709)
-        hd = l - int((709 * hm) / 24)
-        hy = 30 * n + j - 30
-        bulan_hijri = ["Muharram", "Safar", "Rabiul Awwal", "Rabiul Akhir", "Jumadil Awwal", "Jumadil Akhir", "Rajab", "Sya'ban", "Ramadhan", "Syawal", "Dzulqa'dah", "Dzulhijjah"]
-        try:
-            self.tanggal_hijri = f"{hd} {bulan_hijri[hm-1]} {hy} H"
-        except:
-            self.tanggal_hijri = ""
-
-        # kutipan logic
-        kutipan_list = [
-            "Sedikit tetapi rutin lebih baik daripada banyak lalu terhenti.",
-            "Jadikan hari ini lebih dekat kepada Allah daripada kemarin.",
-            "Istirahat boleh, menyerah jangan. Pelan-pelan tetap maju.",
-            "Ilmu, doa, dan amal kecil yang konsisten punya nilai besar.",
-            "Saat hati tenang, syukur terasa lebih mudah.",
-            "Mulai dari satu kebaikan hari ini.",
-            "Semoga langkah kecilmu hari ini menjadi bekal yang baik.",
-        ]
-        self.kutipan = kutipan_list[hari.toordinal() % len(kutipan_list)]
-
-        kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-        lat = db.ambil_pengaturan("lat")
-        lon = db.ambil_pengaturan("lon")
-        kunci = ("auto:" + kota) if lat else kota
-        cache = db.ambil_jadwal(kunci, hari.isoformat())
-        if cache:
-            self.jadwal = cache
-        elif not self.sedang_memuat:
-            self.sedang_memuat = True
-            self.countdown = "Memuat jadwal..."
-            threading.Thread(target=self.ambil_dari_api, args=(kota, lat, lon), daemon=True).start()
-
-        self.muat_timeline()
-        self.muat_ceklis()
-        self.mulai_countdown()
-        
-        try:
-            badges = achievements.evaluasi()
-            for b in badges:
-                kirim_notif("Pencapaian Baru!", f"Kamu mendapatkan badge: {b.get('judul', b.get('nama', b.get('id', 'Badge')))}")
-        except Exception:
-            pass
-
-    def on_leave(self):
-        if self.jam_event:
-            self.jam_event.cancel()
-            self.jam_event = None
-
-    def ambil_dari_api(self, kota, lat, lon):
-        jadwal, pesan_error = None, ""
-        try:
-            if lat and lon:
-                jadwal = prayertimes.ambil_jadwal_koordinat(lat, lon)
-            else:
-                jadwal = prayertimes.ambil_jadwal(kota)
-        except Exception as e:
-            pesan_error = f"{type(e).__name__}: {e}"
-        Clock.schedule_once(lambda dt: self.jadwal_tiba(jadwal, pesan_error))
-
-    def jadwal_tiba(self, jadwal, pesan_error=""):
-        self.sedang_memuat = False
-        if jadwal:
-            kota = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-            lat = db.ambil_pengaturan("lat")
-            kunci = ("auto:" + kota) if lat else kota
-            db.simpan_jadwal(kunci, datetime.date.today().isoformat(), jadwal)
-            self.jadwal = jadwal
-            MDApp.get_running_app().jadwal = jadwal
-            self.muat_timeline()
-            self.perbarui_countdown()
-        else:
-            self.countdown = f"Gagal: {pesan_error}"
-
-    def mulai_countdown(self):
-        if self.jam_event:
-            return
-        self.perbarui_countdown()
-        self.jam_event = Clock.schedule_interval(self.perbarui_countdown, 30)
-
-    def perbarui_countdown(self, *args):
-        hari_ini = datetime.date.today().isoformat()
-        if self._tanggal_aktif and hari_ini != self._tanggal_aktif:
-            self.on_enter()
-            return
-            
-        self.cek_notif_kegiatan()
-        if not self.jadwal:
-            self.ringkasan = "Jadwal belum tersedia."
-            return
-        nama, target, besok = self.waktu_berikutnya()
-        selisih = int((target - datetime.datetime.now()).total_seconds())
-        if selisih < 0:
-            selisih = 0
-        j = selisih // 3600
-        m = (selisih % 3600) // 60
-        keterangan = " (besok)" if besok else ""
-        self.countdown = f"Menuju {nama}{keterangan} - {j}j {m:02d}m"
-        self.ringkasan = f"Waktu berikutnya: {nama} • {target.strftime('%H:%M')}"
-
-    def waktu_berikutnya(self):
-        sekarang = datetime.datetime.now()
-        for nama, jam in self.jadwal:
-            j, m = map(int, jam.split(":"))
-            target = sekarang.replace(hour=j, minute=m, second=0, microsecond=0)
-            if target > sekarang:
-                return nama, target, False
-        nama, jam = self.jadwal[0]
-        j, m = map(int, jam.split(":"))
-        target = sekarang.replace(hour=j, minute=m, second=0, microsecond=0)
-        return nama, target + datetime.timedelta(days=1), True
-
-    def cek_notif_kegiatan(self):
-        sekarang = datetime.datetime.now().strftime("%H:%M")
-        for id_k, nama, jam in self.kegiatan_hari_ini:
-            kunci = f"kegiatan:{id_k}:{datetime.date.today().isoformat()}"
-            if jam == sekarang and kunci not in self.notif_terkirim:
-                self.notif_terkirim.add(kunci)
-                kirim_notif("IbadahKu", f"Waktunya: {nama}")
-
-    def muat_timeline(self):
-        daftar = self.ids.timeline
-        daftar.clear_widgets()
-        item = []
-        self.kegiatan_hari_ini = []
-        if self.jadwal:
-            item = [(jam, nama, True) for nama, jam in self.jadwal]
-        for k in db.kegiatan_hari_ini(HARI[datetime.date.today().weekday()]):
-            item.append((k["jam"], k["nama"], False))
-            self.kegiatan_hari_ini.append((k["id"], k["nama"], k["jam"]))
-        item.sort(key=lambda x: x[0])
-        for jam, nama, is_jadwal in item:
-            daftar.add_widget(BarisTimeline(jam=jam, nama=nama, is_jadwal=is_jadwal))
-
-    def muat_ceklis(self):
-        grid = self.ids.grid_ceklis
-        grid.clear_widgets()
-        hari = datetime.date.today().isoformat()
-        status = db.status_ceklis(hari)
-        status_kegiatan = db.status_kegiatan(hari)
-        selesai = total = 0
-
-        for c in db.semua_ceklis():
-            total += 1
-            done = status.get(c["id"], False)
-            selesai += int(done)
-            grid.add_widget(BarisCeklis(data=c, selesai=done, layar=self))
-
-        # Jadwal kegiatan pribadi ikut menjadi checklist harian.
-        for k in db.kegiatan_hari_ini(HARI[datetime.date.today().weekday()]):
-            total += 1
-            done = status_kegiatan.get(k["id"], False)
-            selesai += int(done)
-            grid.add_widget(BarisCeklisKegiatan(data=k, selesai=done, layar=self))
-
-        streak = db.hitung_streak()
-        persen = int((selesai / total) * 100) if total else 0
-        kobar = "\U0001F525 " if streak > 0 else ""
-        self.teks_streak = f"{selesai} dari {total} selesai  •  {kobar}streak {streak} hari"
-        self.progres_hari = f"{persen}% hari ini"
-        self.ids.bar_progress.value = persen / 100
-
-    def hapus_kegiatan(self, kegiatan_id):
-        db.hapus(kegiatan_id)
-        self.muat_timeline()
-        self.muat_ceklis()
-
-    def buka_popup_ceklis(self):
-        PopupCeklis(self).open()
-
-    def selesaikan_semua(self):
-        tanggal = datetime.date.today().isoformat()
-        db.set_semua_ceklis(tanggal, True)
-        for k in db.kegiatan_hari_ini(HARI[datetime.date.today().weekday()]):
-            db.set_kegiatan_selesai(k["id"], tanggal, True)
-        self.muat_ceklis()
-
-    def reset_ceklis_hari_ini(self):
-        tanggal = datetime.date.today().isoformat()
-        db.set_semua_ceklis(tanggal, False)
-        for k in db.kegiatan_hari_ini(HARI[datetime.date.today().weekday()]):
-            db.set_kegiatan_selesai(k["id"], tanggal, False)
-        self.muat_ceklis()
-
-class BarisKegiatan(MDCard):
-    data = ObjectProperty()
-    layar = ObjectProperty()
-    
-    def hapus(self):
-        app = MDApp.get_running_app()
-        self.dialog = MDDialog(
-            title="Hapus kegiatan?",
-            text="Kegiatan akan dihapus permanen.",
-            buttons=[
-                MDFlatButton(
-                    text="BATAL",
-                    on_release=lambda x: self.dialog.dismiss()
-                ),
-                MDFlatButton(
-                    text="HAPUS",
-                    text_color=app.theme_cls.error_color,
-                    on_release=lambda x: self._proses_hapus()
-                ),
-            ],
-        )
-        self.dialog.open()
-        
-    def _proses_hapus(self):
-        db.hapus(self.data['id'])
-        self.dialog.dismiss()
-        self.layar.muat_daftar()
-
-class KegiatanScreen(MDScreen):
-    def on_enter(self):
-        self.muat_daftar()
-
-    def muat_daftar(self):
-        daftar = self.ids.daftar_kegiatan
-        daftar.clear_widgets()
-        for k in db.semua():
-            daftar.add_widget(BarisKegiatan(data=k, layar=self))
-
-class TambahScreen(MDScreen):
-    def on_enter(self):
-        self._init_menus()
-        
-    def _init_menus(self):
-        hari_items = [{"viewclass": "OneLineListItem", "text": h, "on_release": lambda x=h: self.set_hari(x)} for h in ["Setiap hari", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Ahad"]]
-        self.menu_hari = MDDropdownMenu(caller=self.ids.btn_hari, items=hari_items, width_mult=4)
-        
-        kat_items = [{"viewclass": "OneLineListItem", "text": k, "on_release": lambda x=k: self.set_kat(x)} for k in ["Ibadah", "Belajar", "Lainnya"]]
-        self.menu_kategori = MDDropdownMenu(caller=self.ids.btn_kategori, items=kat_items, width_mult=4)
-
-    def set_hari(self, text):
-        self.ids.btn_hari.text = text
-        self.menu_hari.dismiss()
-        
-    def set_kat(self, text):
-        self.ids.btn_kategori.text = text
-        self.menu_kategori.dismiss()
-
-    def simpan(self):
-        nama = self.ids.inp_nama.text.strip()
-        jam = self.ids.inp_jam.text.strip()
-        if not nama:
-            self.ids.lbl_pesan.text = "Nama kegiatan belum diisi"
-            return
-        cocok = re.fullmatch(r"(\d{1,2}):(\d{2})", jam)
-        if not cocok:
-            self.ids.lbl_pesan.text = "Format jam: HH:MM (contoh: 06:30)"
-            return
-        j, m = int(cocok.group(1)), int(cocok.group(2))
-        if j > 23 or m > 59:
-            self.ids.lbl_pesan.text = "Jam tidak valid (00:00 - 23:59)"
-            return
-        jam = f"{j:02d}:{m:02d}"
-        db.tambah(nama, jam, self.ids.btn_hari.text, self.ids.btn_kategori.text)
-        self.ids.inp_nama.text = ""
-        self.ids.inp_jam.text = ""
-        self.ids.lbl_pesan.text = ""
-        self.manager.current = "kegiatan"
-
-class CircularProgress(Widget):
-    value = NumericProperty(0)
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self.update_canvas, size=self.update_canvas, value=self.update_canvas)
-        
-    def update_canvas(self, *args):
-        self.canvas.clear()
-        radius = max(1, min(self.width, self.height) / 2 - 10)
-        with self.canvas:
-            # Always show the neutral ring.
-            Color(0.8, 0.8, 0.8, 0.30)
-            Line(circle=(self.center_x, self.center_y, radius), width=8)
-            # Do not draw a 0-degree arc: SDL/Kivy can render it as a tiny dot.
-            value = max(0.0, min(1.0, float(self.value)))
-            if value > 0.001:
-                app = MDApp.get_running_app()
-                Color(rgba=app.theme_cls.primary_color)
-                end = 360 if value >= 0.999 else 360 * value
-                Line(circle=(self.center_x, self.center_y, radius, 0, end), width=8)
-
-class TimerScreen(MDScreen):
-    waktu = StringProperty("15:00")
-    status = StringProperty("Pilih durasi lalu tekan Mulai")
-    total_hari_ini = StringProperty("")
-    durasi_menit = NumericProperty(15)
-    progress = NumericProperty(0.0)
-    berjalan = BooleanProperty(False)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.sisa = 15 * 60
-        self.total = 15 * 60
-        self.event = None
-        self.menu = None
-
-    def on_enter(self):
-        if not self.menu:
-            items = [{"viewclass": "OneLineListItem", "text": str(d), "on_release": lambda x=d: self.set_durasi(x)} for d in [1, 5, 10, 15, 20, 30, 45, 60]]
-            self.menu = MDDropdownMenu(caller=self.ids.btn_durasi, items=items, width_mult=2)
-            
-        self.perbarui_total()
-        if self.sisa <= 0:
-            self.reset_tampilan_durasi()
-            
-    def set_durasi(self, menit):
-        self.durasi_menit = int(menit)
-        self.ids.btn_durasi.text = f"{menit} menit"
-        self.menu.dismiss()
-        if self.event is None:
-            self.reset_tampilan_durasi()
-
-    def reset_tampilan_durasi(self, *args):
-        menit = self.durasi_menit
-        self.jeda()
-        self.total = max(1, menit * 60)
-        self.sisa = self.total
-        self.berjalan = False
-        self.progress = 0.0
-        self.tampilkan()
-        self.status = f"Siap fokus selama {menit} menit"
-
-    def perbarui_total(self):
-        self.total_hari_ini = f"Total sesi hari ini: {db.total_timer_hari_ini()} menit"
-
-    def mulai(self):
-        if self.event is not None:
-            return
-        if self.sisa <= 0:
-            self.total = max(1, int(self.durasi_menit) * 60)
-            self.sisa = self.total
-        self.status = "Sesi berjalan..."
-        self.tampilkan()
-        self.berjalan = True
-        self.event = Clock.schedule_interval(self.detik, 1)
-
-    def jeda(self):
-        if self.event is not None:
-            self.event.cancel()
-            self.event = None
-        self.berjalan = False
-        if self.sisa > 0:
-            self.status = "Jeda - tekan Mulai untuk lanjut"
-
-    def ulang(self):
-        self.reset_tampilan_durasi()
-
-    def detik(self, dt):
-        self.sisa -= 1
-        if self.sisa <= 0:
-            self.selesai_sesi()
-            return
-        self.tampilkan()
-
-    def tampilkan(self):
-        total = max(1, int(self.total))
-        sisa = max(0, int(self.sisa))
-        m = sisa // 60
-        s = sisa % 60
-        self.waktu = f"{m:02d}:{s:02d}"
-        self.progress = min(1.0, max(0.0, 1 - (sisa / total)))
-        if "progres" in self.ids:
-            self.ids.progres.value = self.progress
-
-    def on_leave(self, *args):
-        if self.event is not None:
-            self.event.cancel()
-            self.event = None
-        self.berjalan = False
-
-    def selesai_sesi(self):
-        self.jeda()
-        self.sisa = 0
-        self.waktu = "00:00"
-        self.progress = 1.0
-        self.ids.progres.value = self.progress
-        self.status = "Alhamdulillah, sesi selesai!"
-        db.catat_timer(self.total // 60)
-        self.perbarui_total()
-        kirim_notif("IbadahKu", "Sesi ibadah selesai. Alhamdulillah!")
-
-class TasbihCircleButton(Widget):
-    """Lingkaran tasbih yang menangani touch secara langsung.
-
-    Tidak memakai ButtonBehavior agar tidak ada konflik event touch dengan
-    widget KivyMD/parent layout. Satu tap di area lingkaran = satu hitungan.
-    """
-    hitungan = NumericProperty(0)
-    target_teks = StringProperty("33")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.counter = Label(
-            text="0", color=(1, 1, 1, 1), bold=True,
-            halign="center", valign="middle", font_size="42sp",
-            size_hint=(1, 1),
-        )
-        self.counter.disabled = True
-        self.add_widget(self.counter)
-        self.bind(pos=self._sync, size=self._sync, hitungan=self._sync, target_teks=self._sync)
-        Clock.schedule_once(self._sync, 0)
-
-    def _sync(self, *args):
-        self.counter.text = str(self.hitungan)
-        self.counter.pos = self.pos
-        self.counter.size = self.size
-        self.counter.text_size = self.size
-        self.canvas.clear()
-        if self.width <= 0 or self.height <= 0:
-            return
-        r_full = min(self.width, self.height) / 2
-        r_inti = r_full * 0.80
-        self.counter.font_size = max(26, min(50, r_inti * 0.42))
-        with self.canvas:
-            app = MDApp.get_running_app()
-            color = app.theme_cls.primary_color if app else (0.13, 0.59, 0.95, 1)
-            gold = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
-
-            # Cincin 33 manik tasbih mengelilingi lingkaran utama, terisi
-            # emas mengikuti kemajuan menuju target (atau berputar terus
-            # kalau modenya "Bebas").
-            jumlah_manik = 33
-            try:
-                target = int(self.target_teks)
-            except (TypeError, ValueError):
-                target = None
-            if target and target > 0:
-                aktif = min(jumlah_manik, int(round((self.hitungan / target) * jumlah_manik)))
-            else:
-                aktif = self.hitungan % jumlah_manik
-            manik_r = max(2.5, r_full * 0.045)
-            orbit_r = r_inti + manik_r + max(2, r_full * 0.03)
-            for i in range(jumlah_manik):
-                sudut = (2 * math.pi * i / jumlah_manik) - (math.pi / 2)
-                mx = self.center_x + orbit_r * math.cos(sudut)
-                my = self.center_y + orbit_r * math.sin(sudut)
-                if i < aktif:
-                    Color(rgba=gold)
-                else:
-                    Color(rgba=(color[0], color[1], color[2], 0.28))
-                Ellipse(pos=(mx - manik_r, my - manik_r), size=(manik_r * 2, manik_r * 2))
-
-            Color(rgba=color)
-            Ellipse(
-                pos=(self.center_x - r_inti, self.center_y - r_inti),
-                size=(r_inti * 2, r_inti * 2),
-            )
-
-    def on_touch_down(self, touch):
-        # Tangkap touch langsung pada widget, tanpa ButtonBehavior/KV callback.
-        if self.collide_point(*touch.pos):
-            screen = self._find_screen()
-            if screen is not None:
-                screen.tap()
-                get_haptic()
-            return True
-        return super().on_touch_down(touch)
-
-    def _find_screen(self):
-        parent = self.parent
-        while parent is not None:
-            if isinstance(parent, TasbihScreen):
-                return parent
-            parent = parent.parent
-        return None
-
-
-class TasbihScreen(MDScreen):
-    hitungan = NumericProperty(0)
-    hitungan_label = StringProperty("0")
-    progres_label = StringProperty("")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.hitungan = 0
-        self.tercatat = 0
-        self.menu_dzikir = None
-        self.menu_target = None
-
-    def on_enter(self):
-        if not self.menu_dzikir:
-            d_items = [{"viewclass": "OneLineListItem", "text": d, "on_release": lambda x=d: self.set_dzikir(x)} for d in ["Subhanallah", "Alhamdulillah", "Allahu Akbar", "Astaghfirullah", "La ilaha illallah"]]
-            self.menu_dzikir = MDDropdownMenu(caller=self.ids.btn_dzikir, items=d_items, width_mult=4)
-            t_items = [{"viewclass": "OneLineListItem", "text": t, "on_release": lambda x=t: self.set_target(x)} for t in ["33", "99", "100", "1000", "Bebas"]]
-            self.menu_target = MDDropdownMenu(caller=self.ids.btn_target, items=t_items, width_mult=2)
-        hari = datetime.date.today().isoformat()
-        self.hitungan = db.ambil_tasbih(hari)
-        self.tercatat = self.hitungan
-        self.perbarui()
-
-    def set_dzikir(self, text):
-        self.ids.btn_dzikir.text = text
-        self.menu_dzikir.dismiss()
-
-    def set_target(self, text):
-        self.ids.btn_target.text = text
-        self.menu_target.dismiss()
-        self.perbarui()
-
-    def on_leave(self):
-        self.simpan()
-
-    def simpan(self):
-        delta = self.hitungan - self.tercatat
-        if delta > 0:
-            db.simpan_tasbih(datetime.date.today().isoformat(), delta)
-            self.tercatat = self.hitungan
-
-    def tap(self):
-        self.hitungan += 1
-        teks_target = self.ids.btn_target.text
-        if teks_target != "Bebas":
-            target = int(teks_target)
-            if self.hitungan >= target and self.hitungan - 1 < target:
-                kirim_notif("IbadahKu", f"MasyaAllah, {target}x {self.ids.btn_dzikir.text} selesai!")
-        self.perbarui()
-
-    def ulang(self):
-        self.hitungan = 0
-        self.tercatat = 0
-        db.reset_tasbih(datetime.date.today().isoformat())
-        self.perbarui()
-
-    def perbarui(self, *args):
-        self.hitungan_label = str(self.hitungan)
-        teks_target = self.ids.btn_target.text
-        if teks_target == "Bebas":
-            self.progres_label = "Mode bebas (tanpa target)"
-        else:
-            self.progres_label = f"{self.hitungan} / {teks_target}"
-
-_POSISI_BINTANG = [
-    (0.10, 0.80, 1.6), (0.22, 0.52, 1.0), (0.06, 0.30, 1.3), (0.32, 0.18, 0.9),
-    (0.52, 0.88, 1.1), (0.68, 0.60, 1.6), (0.86, 0.34, 1.0), (0.58, 0.14, 1.2),
-    (0.42, 0.68, 0.8), (0.92, 0.78, 1.1), (0.78, 0.90, 0.8), (0.16, 0.62, 0.7),
-]
-
-
-def _lukis_bintang_kecil(canvas, x0, y0, lebar, tinggi, warna):
-    """Taburkan titik-titik kecil menyerupai bintang di area (x0,y0,lebar,tinggi)."""
-    if lebar <= 0 or tinggi <= 0:
-        return
-    skala = min(lebar, tinggi)
-    with canvas:
-        Color(rgba=warna)
-        for fx, fy, fr in _POSISI_BINTANG:
-            r = max(1.0, fr * skala * 0.014)
-            Ellipse(pos=(x0 + fx * lebar - r, y0 + fy * tinggi - r), size=(r * 2, r * 2))
-
-
-def _lukis_bulan_sabit(canvas, cx, cy, r, warna_isi, warna_potong, offset_rasio=0.40):
-    """Gambar bulan sabit: lingkaran penuh lalu 'dimakan' lingkaran kedua
-    berwarna latar, menyisakan bentuk sabit -- tanpa perlu aset gambar."""
-    with canvas:
-        Color(rgba=warna_isi)
-        Ellipse(pos=(cx - r, cy - r), size=(r * 2, r * 2))
-        Color(rgba=warna_potong)
-        r2 = r * 0.90
-        cx2 = cx + r * offset_rasio
-        Ellipse(pos=(cx2 - r2, cy - r2), size=(r2 * 2, r2 * 2))
-
-
-class GarisHias(Widget):
-    """Garis dekoratif tipis dengan celah bertitik di tengah, dipakai sebagai
-    pemisah antar bagian yang lebih halus daripada garis polos biasa."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self._gambar, size=self._gambar)
-
-    def _gambar(self, *args):
-        self.canvas.clear()
-        if self.width <= 0:
-            return
-        app = MDApp.get_running_app()
-        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
-        with self.canvas:
-            Color(rgba=(amber[0], amber[1], amber[2], 0.55))
-            mid = self.center_x
-            gap = min(16, self.width * 0.08)
-            Line(points=[self.x, self.center_y, mid - gap, self.center_y], width=1.2)
-            Line(points=[mid + gap, self.center_y, self.right, self.center_y], width=1.2)
-            r = 2.6
-            Ellipse(pos=(mid - r, self.center_y - r), size=(r * 2, r * 2))
-
-
-class HairlineDivider(Widget):
-    """Garis pemisah tipis satu piksel, dipakai antar baris checklist supaya
-    daftar terasa seperti satu list bersih, bukan tumpukan kotak berwarna."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self._gambar, size=self._gambar)
-
-    def _gambar(self, *args):
-        self.canvas.clear()
-        if self.width <= 0:
-            return
-        app = MDApp.get_running_app()
-        gelap = app and app.theme_cls.theme_style == "Dark"
-        warna = (1, 1, 1, 0.08) if gelap else (0, 0, 0, 0.08)
-        with self.canvas:
-            Color(rgba=warna)
-            Line(points=[self.x, self.center_y, self.right, self.center_y], width=1)
-
-
-class SplashArt(Widget):
-    """Latar dekoratif splash screen: langit malam dengan bulan sabit &
-    taburan bintang, digambar lewat canvas tanpa aset gambar tambahan."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self._gambar, size=self._gambar)
-
-    def _gambar(self, *args):
-        self.canvas.clear()
-        if self.width <= 0 or self.height <= 0:
-            return
-        app = MDApp.get_running_app()
-        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
-        dasar = app.warna_indigo if app else (0.18, 0.16, 0.36, 1)
-        _lukis_bintang_kecil(
-            self.canvas, self.x, self.y, self.width, self.height,
-            (amber[0], amber[1], amber[2], 0.6),
-        )
-        r = min(self.width, self.height) * 0.16
-        cx = self.center_x
-        cy = self.y + self.height * 0.7
-        _lukis_bulan_sabit(
-            self.canvas, cx, cy, r,
-            (amber[0], amber[1], amber[2], 0.92),
-            (dasar[0], dasar[1], dasar[2], 1),
+def ubah_kegiatan(id_kegiatan, nama, jam, hari, kategori):
+    """Update kegiatan - ada di main.py supaya database.py tak perlu diedit."""
+    with sqlite3.connect(db.DB) as con:
+        con.execute(
+            "UPDATE kegiatan SET nama=?, jam=?, hari=?, kategori=? WHERE id=?",
+            (nama, jam, hari, kategori, id_kegiatan),
         )
 
 
-class LangitHero(Widget):
-    """Latar kartu 'ibadah berikutnya': langit malam dengan bulan sabit &
-    taburan bintang -- motif utama identitas visual IbadahKu sekarang."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self._gambar, size=self._gambar)
-
-    def _gambar(self, *args):
-        self.canvas.clear()
-        if self.width <= 0 or self.height <= 0:
-            return
-        app = MDApp.get_running_app()
-        dasar = app.theme_cls.primary_dark if app else (0.14, 0.13, 0.30, 1)
-        amber = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
-        with self.canvas:
-            Color(rgba=dasar)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[24, 24, 24, 24])
-        _lukis_bintang_kecil(
-            self.canvas, self.x, self.y, self.width, self.height,
-            (amber[0], amber[1], amber[2], 0.55),
-        )
-        r = self.height * 0.32
-        cx = self.right - self.height * 0.40
-        cy = self.top - self.height * 0.28
-        _lukis_bulan_sabit(
-            self.canvas, cx, cy, r,
-            (amber[0], amber[1], amber[2], 0.88),
-            (dasar[0], dasar[1], dasar[2], 1),
-        )
-
-
-class WeeklyChart(Widget):
-    """Grafik 7 hari yang tidak bergantung pada widget eksternal."""
-    data = ListProperty([])
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self._gambar, size=self._gambar, data=self._gambar)
-
-    def _gambar(self, *args):
-        self.canvas.clear()
-        values = []
-        for item in (self.data or []):
-            if isinstance(item, dict):
-                values.append(float(item.get("ceklis_persen", 0) or 0))
-            else:
-                try:
-                    values.append(float(item))
-                except (TypeError, ValueError):
-                    values.append(0.0)
-        values = (values + [0.0] * 7)[:7]
-        if not self.width or not self.height:
-            return
-
-        margin_x = min(18, self.width * 0.06)
-        margin_y = min(14, self.height * 0.08)
-        usable_w = max(1, self.width - margin_x * 2)
-        usable_h = max(1, self.height - margin_y * 2)
-        gap = usable_w * 0.035
-        bar_w = max(4, (usable_w - gap * 6) / 7)
-
-        app = MDApp.get_running_app()
-        primary = app.theme_cls.primary_color if app else (0.13, 0.59, 0.95, 1)
-        emas = app.warna_amber if app else (0.88, 0.58, 0.29, 1)
-        puncak = max(values) if values else 0
-        with self.canvas:
-            Color(rgba=(0.5, 0.5, 0.5, 0.18))
-            Line(points=[self.x + margin_x, self.y + margin_y,
-                         self.right - margin_x, self.y + margin_y], width=1)
-            for i, value in enumerate(values):
-                value = max(0, min(100, value))
-                h = usable_h * value / 100.0
-                x = self.x + margin_x + i * (bar_w + gap)
-                y = self.y + margin_y
-                # Hari dengan persentase ceklis tertinggi ditonjolkan emas,
-                # sisanya tetap warna primer -- kejutan kecil yang menandai
-                # pencapaian terbaik minggu ini.
-                if puncak > 0 and value == puncak:
-                    Color(rgba=emas)
-                else:
-                    Color(rgba=primary)
-                RoundedRectangle(pos=(x, y), size=(bar_w, max(2, h)), radius=[4, 4, 4, 4])
-
-
-class BadgeCard(MDCard):
-    nama = StringProperty("")
-    deskripsi = StringProperty("")
-    unlocked = BooleanProperty(False)
-
-
-class StatistikScreen(MDScreen):
-    def on_enter(self):
-        self.muat_statistik()
-
-    def muat_statistik(self):
-        grid = self.ids.grid_stat
-        grid.clear_widgets()
-        hari = datetime.date.today().isoformat()
-        awal = (datetime.date.today() - datetime.timedelta(days=6)).isoformat()
-
-        try:
-            streak = db.hitung_streak()
-            status = db.status_ceklis(hari)
-            selesai = sum(1 for v in status.values() if v)
-            aktif = len(db.semua_ceklis())
-            # Kegiatan terjadwal juga dihitung sebagai checklist hari ini.
-            status_kegiatan = db.status_kegiatan(hari)
-            kegiatan = db.kegiatan_hari_ini(HARI[datetime.date.today().weekday()])
-            selesai += sum(1 for k in kegiatan if status_kegiatan.get(k["id"], False))
-            aktif += len(kegiatan)
-
-            menit_hari = db.total_timer_hari_ini()
-            tasbih_hari = db.ambil_tasbih(hari)
-            menit_minggu, tasbih_minggu, hari_aktif = db.ringkasan_minggu(awal)
-            total_menit, total_tasbih = db.total_keseluruhan()
-        except Exception as exc:
-            self.baris(grid, "Statistik", f"Gagal memuat data: {type(exc).__name__}")
-            return
-
-        self.baris(grid, "Streak ceklis", f"{streak} hari beruntun")
-        self.baris(grid, "Ceklis hari ini", f"{selesai} dari {aktif} item selesai")
-        self.baris(grid, "Timer hari ini", f"{menit_hari} menit")
-        self.baris(grid, "Tasbih hari ini", f"{tasbih_hari} kali")
-        self.baris(grid, "7 hari terakhir",
-                   f"{menit_minggu} menit  •  {tasbih_minggu}x dzikir  •  aktif {hari_aktif} hari")
-        self.baris(grid, "Total keseluruhan",
-                   f"{total_menit} menit  •  {total_tasbih}x dzikir")
-
-        # Database mengembalikan 7 dictionary; WeeklyChart juga menerima list angka.
-        try:
-            chart_data = db.data_grafik_mingguan(awal)
-        except Exception:
-            chart_data = [0] * 7
-        self.ids.weekly_chart.data = chart_data
-
-        bg = self.ids.badge_grid
-        bg.clear_widgets()
-        try:
-            badges = achievements.semua_dengan_status()
-            for b in badges:
-                bg.add_widget(BadgeCard(
-                    nama=b.get("judul", b.get("nama", "Badge")),
-                    deskripsi=b.get("deskripsi", ""),
-                    unlocked=bool(b.get("tercapai", b.get("unlocked", False))),
-                ))
-        except Exception:
-            pass
-
-    def baris(self, grid, judul, isi):
-        from kivymd.uix.label import MDLabel
-        app = MDApp.get_running_app()
-        gelap = app.theme_cls.theme_style == "Dark"
-        bg = app.warna_malam_kartu if gelap else app.warna_permukaan
-        kartu = MDCard(
-            size_hint_y=None,
-            height=72,
-            padding=[16, 8],
-            orientation="vertical",
-            radius=[14],
-            elevation=0,
-            md_bg_color=bg,
-        )
-        kartu.add_widget(MDLabel(
-            text=judul,
-            font_style="Caption",
-            theme_text_color="Secondary",
-            size_hint_y=None,
-            height=22,
-        ))
-        kartu.add_widget(MDLabel(
-            text=isi,
-            font_style="Subtitle1",
-            bold=True,
-        ))
-        grid.add_widget(kartu)
-
-
-class DoaScreen(MDScreen):
-    judul = StringProperty("")
-    arab = StringProperty("")
-    latin = StringProperty("")
-    arti = StringProperty("")
-    nomor = StringProperty("")
-    tombol_favorit = StringProperty("bookmark-outline")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.indeks = datetime.date.today().timetuple().tm_yday % len(DOA)
-
-    def on_enter(self):
-        self.tampilkan()
-
-    def tampilkan(self):
-        d = DOA[self.indeks]
-        self.judul = d["judul"]
-        self.arab = siapkan_arab(d["arab"])
-        self.latin = d["latin"]
-        self.arti = '"' + d["arti"] + '"'
-        self.nomor = f"{self.indeks + 1} / {len(DOA)}"
-        self.tombol_favorit = "bookmark" if db.doa_favorit(self.indeks) else "bookmark-outline"
-
-    def toggle_favorit(self):
-        aktif = not db.doa_favorit(self.indeks)
-        db.set_doa_favorit(self.indeks, aktif)
-        self.tampilkan()
-
-    def acak(self):
-        if len(DOA) > 1:
-            kandidat = list(range(len(DOA)))
-            kandidat.remove(self.indeks)
-            self.indeks = random.choice(kandidat)
-            self.tampilkan()
-
-    def sebelumnya(self):
-        self.indeks = (self.indeks - 1) % len(DOA)
-        self.tampilkan()
-
-    def berikutnya(self):
-        self.indeks = (self.indeks + 1) % len(DOA)
-        self.tampilkan()
-
-class KompasKiblat(Widget):
-    sudut = NumericProperty(0)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        from kivy.uix.label import Label
-        self.huruf = {}
-        for h, (dx, dy) in [("U", (0, 1)), ("T", (1, 0)), ("S", (0, -1)), ("B", (-1, 0))]:
-            l = Label(text=h, font_size=15, bold=True, size=(22, 22), size_hint=(None, None))
-            self.add_widget(l)
-            self.huruf[h] = (l, dx, dy)
-        self.bind(pos=self.gambar, size=self.gambar, sudut=self.gambar)
-
-    def gambar(self, *args):
-        cx, cy = self.center
-        r = min(self.width, self.height) / 2 - 24
-        app = MDApp.get_running_app()
-        for h, (l, dx, dy) in self.huruf.items():
-            l.center = (cx + dx * (r + 12), cy + dy * (r + 12))
-            l.color = app.theme_cls.text_color
-        primer = app.theme_cls.primary_color
-        emas = app.warna_amber if hasattr(app, "warna_amber") else (0.88, 0.58, 0.29, 1)
-        self.canvas.clear()
-        with self.canvas:
-            Color(rgba=(primer[0], primer[1], primer[2], 0.4))
-            Line(circle=(cx, cy, r), width=1.5)
-            Color(rgba=primer)
-            Line(circle=(cx, cy, 3))
-            Line(points=[cx, cy + r - 4, cx, cy + r - 16], width=2)
-            rad = math.radians(self.sudut)
-            ux, uy = cx + (r - 28) * math.sin(rad), cy + (r - 28) * math.cos(rad)
-            bx, by = cx - (r - 52) * math.sin(rad), cy - (r - 52) * math.cos(rad)
-            Color(rgba=emas)
-            Line(points=[bx, by, ux, uy], width=4)
-            p1x = ux + 14 * math.sin(rad + 2.5)
-            p1y = uy + 14 * math.cos(rad + 2.5)
-            p2x = ux + 14 * math.sin(rad - 2.5)
-            p2y = uy + 14 * math.cos(rad - 2.5)
-            Triangle(points=[ux, uy, p1x, p1y, p2x, p2y])
-
-class KiblatScreen(MDScreen):
-    ARAH = ["Utara", "Timur Laut", "Timur", "Tenggara", "Selatan", "Barat Daya", "Barat", "Barat Laut"]
-    info = StringProperty("")
-    derajat = StringProperty("")
-    keterangan = StringProperty("")
-
-    def on_enter(self):
-        lat = db.ambil_pengaturan("lat")
-        lon = db.ambil_pengaturan("lon")
-        if lat and lon:
-            lokasi = db.ambil_pengaturan("kota", KOTA_DEFAULT) + " (otomatis)"
-            la, lo = float(lat), float(lon)
-        else:
-            nama = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-            lokasi = nama + " (manual)"
-            la, lo = prayertimes.KOTA_KOORDINAT.get(nama, prayertimes.KOTA_KOORDINAT[KOTA_DEFAULT])
-        b = prayertimes.arah_kiblat(la, lo)
-        arah = self.ARAH[int((b + 22.5) // 45) % 8]
-        self.info = f"Lokasi: {lokasi}"
-        self.keterangan = (f"Arah kiblat: {arah} dari utara.\n"
-                           f"Cara pakai: hadap ke arah UTARA,\n"
-                           f"lalu putar {b:.0f} derajat searah jarum jam.")
-        self.ids.kompas.sudut = b
-
-class PengaturanScreen(MDScreen):
-    def on_enter(self):
-        self._sedang_muat = True
-        if not hasattr(self, 'menu_kota'):
-            k_items = [{"viewclass": "OneLineListItem", "text": k, "on_release": lambda x=k: self.set_kota(x)} for k in DAFTAR_KOTA]
-            self.menu_kota = MDDropdownMenu(caller=self.ids.btn_kota, items=k_items, width_mult=3)
-            a_items = [{"viewclass": "OneLineListItem", "text": a, "on_release": lambda x=a: self.set_alarm_menit(x)} for a in ["5", "10", "15", "30"]]
-            self.menu_alarm = MDDropdownMenu(caller=self.ids.btn_alarm_menit, items=a_items, width_mult=2)
-            
-        self.ids.btn_kota.text = db.ambil_pengaturan("kota", KOTA_DEFAULT)
-        self.ids.sw_alarm.active = db.ambil_pengaturan("alarm_aktif", "0") == "1"
-        self.ids.btn_alarm_menit.text = db.ambil_pengaturan("alarm_menit", "10")
-        app = MDApp.get_running_app()
-        self.ids.sw_gelap.active = app.theme_cls.theme_style == "Dark"
-        
-        if db.ambil_pengaturan("lat"):
-            self.ids.lbl_lokasi.text = ("Mode otomatis aktif: " + db.ambil_pengaturan("kota", KOTA_DEFAULT))
-        else:
-            self.ids.lbl_lokasi.text = "Mode manual (kota dipilih sendiri)"
-        self.ids.lbl_status.text = ""
-        self._sedang_muat = False
-
-    def set_kota(self, text):
-        self.ids.btn_kota.text = text
-        self.menu_kota.dismiss()
-        self.simpan_kota()
-        
-    def set_alarm_menit(self, text):
-        self.ids.btn_alarm_menit.text = text
-        self.menu_alarm.dismiss()
-        self.pilih_menit()
-
-    def ubah_alarm(self, saklar, aktif):
-        if getattr(self, "_sedang_muat", False): return
-        db.simpan_pengaturan("alarm_aktif", "1" if aktif else "0")
-
-    def pilih_menit(self):
-        if getattr(self, "_sedang_muat", False): return
-        db.simpan_pengaturan("alarm_menit", self.ids.btn_alarm_menit.text)
-
-    def simpan_kota(self):
-        kota = self.ids.btn_kota.text
-        db.simpan_pengaturan("kota", kota)
-        db.simpan_pengaturan("lat", "")
-        db.simpan_pengaturan("lon", "")
-        self.ids.lbl_lokasi.text = "Mode manual (kota dipilih sendiri)"
-        self.ids.lbl_status.text = f"Kota manual tersimpan: {kota}"
-
-    def deteksi_lokasi(self):
-        self.ids.lbl_lokasi.text = "Mendeteksi lokasi (butuh internet)..."
-        threading.Thread(target=self._deteksi, daemon=True).start()
-
-    def _deteksi(self):
-        try:
-            kota, lat, lon = prayertimes.deteksi_lokasi()
-        except Exception as e:
-            pesan = f"Gagal mendeteksi: {type(e).__name__}"
-            Clock.schedule_once(lambda dt: self._set_lokasi(pesan))
-            return
-        db.simpan_pengaturan("kota", kota)
-        db.simpan_pengaturan("lat", str(lat))
-        db.simpan_pengaturan("lon", str(lon))
-        info = (f"Mode otomatis aktif: {kota}\n"
-                f"Buka ulang Beranda untuk memuat jadwalnya")
-        Clock.schedule_once(lambda dt: self._set_lokasi(info))
-
-    def _set_lokasi(self, teks):
-        self.ids.lbl_lokasi.text = teks
-        if self.manager and self.manager.has_screen("home"):
-            self.manager.get_screen("home").on_enter()
-
-    def ubah_mode(self, saklar, aktif):
-        if getattr(self, "_sedang_muat", False): return
-        app = MDApp.get_running_app()
-        app.theme_cls.theme_style = "Dark" if aktif else "Light"
-        db.simpan_pengaturan("mode_gelap", "1" if aktif else "0")
-        
-    def ubah_warna(self, palette):
-        app = MDApp.get_running_app()
-        app.theme_cls.primary_palette = palette
-        db.simpan_pengaturan("tema_warna", palette)
-
-class IbadahKuApp(MDApp):
-    font_arab = StringProperty("")
-
-    # Token warna kustom (tidak berubah walau tema terang/gelap di-toggle,
-    # dipakai widget kustom & sebagai aksen di atas primary_palette KivyMD)
-    warna_indigo = ListProperty(PALET["indigo"])
-    warna_indigo_soft = ListProperty(PALET["indigo_soft"])
-    warna_amber = ListProperty(PALET["amber"])
-    warna_amber_soft = ListProperty(PALET["amber_soft"])
-    warna_langit = ListProperty(PALET["langit"])
-    warna_langit_dim = ListProperty(PALET["langit_dim"])
-    warna_permukaan = ListProperty(PALET["permukaan"])
-    warna_malam = ListProperty(PALET["malam"])
-    warna_malam_kartu = ListProperty(PALET["malam_kartu"])
-    warna_ivory = ListProperty(PALET["ivory"])
-    warna_tinta = ListProperty(PALET["tinta"])
-
-    def build(self):
-        self.theme_cls.material_style = "M3"
-        self.theme_cls.primary_palette = db.ambil_pengaturan("tema_warna", "Indigo")
-        self.theme_cls.theme_style = "Dark" if db.ambil_pengaturan("mode_gelap", "0") == "1" else "Light"
+class IbadahKu:
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.index = 0
         db.buat_tabel()
-        self.font_arab = cari_font_arab()
+        self.dark = db.ambil_pengaturan("dark_mode", "0") == "1"
+        self.accent = db.ambil_pengaturan("accent", ACCENTS[0])
+        self.city = db.ambil_pengaturan("kota", "Jakarta")
+        self.alarm = db.ambil_pengaturan("alarm", "0") == "1"
+        self.prayer = None
+        self._prayer_retry_at = 0.0
+        self.timer_total = 25 * 60
+        self.timer_left = 25 * 60
+        self.timer_running = False
+        self.timer_task = None
+        self.tasbih_count = db.ambil_tasbih(today())
+        self.tasbih_target = int(db.ambil_pengaturan("tasbih_target", "33"))
+        self.dzikir = db.ambil_pengaturan("dzikir", DZIKIR[0])
+        self.search_doa = ""
+        self.favorite_only = False
+        self._countdown_label = None
+        self._hero_nama = None
+        self._fokus_time = None
+        self._fokus_ring = None
+        self._configure_page()
 
-        self.jadwal = _baca_jadwal_cache()
-        self.alarm_terkirim = set()
+    # ================= tema & komponen dasar =================
+
+    @property
+    def c(self):
+        return DARK if self.dark else LIGHT
+
+    def _darken(self, hex_color, f=0.6):
+        h = hex_color.lstrip("#")
+        r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+        return f"#{int(r * f):02X}{int(g * f):02X}{int(b * f):02X}"
+
+    def _gradient(self):
+        return ft.LinearGradient(
+            begin=ft.Alignment(-1, -1), end=ft.Alignment(1, 1),
+            colors=[self.accent, self._darken(self.accent)])
+
+    def _center(self, control):
+        """Baris selebar kartu yang isinya SELALU lurus tengah."""
+        return ft.Row([control], alignment=ft.MainAxisAlignment.CENTER)
+
+    def d_w(self):
+        """Lebar dialog responsif - konservatif (dialog punya padding sendiri)."""
         try:
-            self.bunyi = SoundLoader.load(buat_file_bunyi())
+            w = self.page.width or 400
         except Exception:
-            self.bunyi = None
-        Clock.schedule_interval(self.cek_alarm, 20)
+            w = 400
+        return min(w - 72, 440)
 
-        sm = ScreenManager()
-        sm.add_widget(SplashScreen(name="splash"))
-        sm.add_widget(HomeScreen(name="home"))
-        sm.add_widget(KegiatanScreen(name="kegiatan"))
-        sm.add_widget(TambahScreen(name="tambah"))
-        sm.add_widget(TimerScreen(name="timer"))
-        sm.add_widget(TasbihScreen(name="tasbih"))
-        sm.add_widget(StatistikScreen(name="statistik"))
-        sm.add_widget(DoaScreen(name="doa"))
-        sm.add_widget(KiblatScreen(name="kiblat"))
-        sm.add_widget(PengaturanScreen(name="pengaturan"))
-        return sm
-        
-    def on_start(self):
-        self.root.current = "splash"
-
-    def cek_alarm(self, *args):
-        if db.ambil_pengaturan("alarm_aktif", "0") != "1":
-            return
-        sekarang = datetime.datetime.now()
-        tanggal_hari_ini = sekarang.date().isoformat()
-        if getattr(self, "tanggal_alarm", None) != tanggal_hari_ini:
-            self.tanggal_alarm = tanggal_hari_ini
-            self.alarm_terkirim.clear()
-            self.jadwal = _baca_jadwal_cache() or []
-        agenda = list(self.jadwal or [])
-        for k in db.kegiatan_hari_ini(HARI[sekarang.weekday()]):
-            agenda.append((k["id"], k["nama"], k["jam"]))
-        if not agenda:
-            return
+    def d_h(self):
         try:
-            offset = int(db.ambil_pengaturan("alarm_menit", "10"))
-        except:
-            offset = 10
-        for item in agenda:
-            if len(item) == 2:
-                sumber_id, nama, jam = "shalat", item[0], item[1]
-            else:
-                sumber_id, nama, jam = item
+            h = self.page.height or 700
+        except Exception:
+            h = 700
+        return max(240, min(h - 190, 470))
+
+    def card(self, content, *, padding=16, bgcolor=None, radius=20, expand=False,
+             gradient=None, border=None, on_click=None, shadow=True):
+        return ft.Container(
+            content=content, padding=padding, bgcolor=bgcolor or self.c["surface"],
+            gradient=gradient, border=border, border_radius=radius, expand=expand,
+            on_click=on_click,
+            shadow=ft.BoxShadow(blur_radius=18, spread_radius=0, color="#14000000",
+                                offset=ft.Offset(0, 4)) if shadow else None)
+
+    def section(self, title, trailing=None):
+        return ft.Row([
+            ft.Container(width=4, height=18, border_radius=2, bgcolor=GOLD),
+            ft.Text(title, size=16, weight=ft.FontWeight.BOLD, color=self.c["text"], expand=True),
+            trailing or ft.Container(),
+        ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+    def header(self, title, subtitle=None, action=None):
+        return ft.Row([
+            ft.Column([
+                ft.Text(title, size=25, weight=ft.FontWeight.BOLD, color=self.c["text"]),
+                ft.Text(subtitle or format_tanggal(), size=12, color=self.c["muted"]),
+            ], spacing=2, expand=True),
+            action or ft.Container(),
+        ], vertical_alignment=ft.CrossAxisAlignment.START)
+
+    def notify(self, message):
+        sb = ft.SnackBar(ft.Text(message, color="#FFFFFF"), bgcolor=self.accent)
+        try:
+            self.page.show_dialog(sb)
+        except Exception:
+            self.page.snack_bar = sb
+            self.page.update()
+
+    def on_nav(self, e):
+        self.index = e.control.selected_index
+        self.refresh()
+
+    def _configure_page(self):
+        self.page.title = "IbadahKu"
+        self.page.padding = 0
+        self.page.bgcolor = self.c["bg"]
+        self.page.theme_mode = ft.ThemeMode.DARK if self.dark else ft.ThemeMode.LIGHT
+        self.page.theme = ft.Theme(color_scheme_seed=self.accent, scaffold_bgcolor=self.c["bg"])
+        self.page.dark_theme = ft.Theme(color_scheme_seed=self.accent, scaffold_bgcolor=self.c["bg"])
+        self.page.fonts = {"NotoNaskh": "assets/fonts/NotoNaskhArabic-Regular.ttf"}
+        first = not hasattr(self, "body")
+        if first:
+            self.body = ft.Container(expand=True, padding=ft.Padding.only(left=14, right=14, top=6, bottom=4))
+        self.page.navigation_bar = ft.NavigationBar(
+            selected_index=self.index,
+            on_change=self.on_nav,
+            bgcolor=self.c["surface"],
+            indicator_color=self.accent + "26",
+            destinations=[
+                ft.NavigationBarDestination(icon=ft.Icons.HOME_OUTLINED, selected_icon=ft.Icons.HOME, label="Beranda"),
+                ft.NavigationBarDestination(icon=ft.Icons.CHECKLIST_OUTLINED, selected_icon=ft.Icons.CHECKLIST, label="Kegiatan"),
+                ft.NavigationBarDestination(icon=ft.Icons.SELF_IMPROVEMENT_OUTLINED, selected_icon=ft.Icons.SELF_IMPROVEMENT, label="Fokus"),
+                ft.NavigationBarDestination(icon=ft.Icons.CIRCLE_OUTLINED, selected_icon=ft.Icons.TRIP_ORIGIN, label="Tasbih"),
+                ft.NavigationBarDestination(icon=ft.Icons.SETTINGS_OUTLINED, selected_icon=ft.Icons.SETTINGS, label="Atur"),
+            ],
+        )
+        if first:
+            self.page.add(ft.SafeArea(content=self.body, expand=True))
+            self.page.run_task(self._countdown_loop)
+        self.refresh()
+
+    def refresh(self):
+        self.page.bgcolor = self.c["bg"]
+        self.page.navigation_bar.bgcolor = self.c["surface"]
+        self.page.navigation_bar.selected_index = self.index
+        self.page.navigation_bar.indicator_color = self.accent + "26"
+        pages = [self.home_page, self.activities_page, self.focus_page,
+                 self.tasbih_page, self.settings_page]
+        self.body.content = pages[self.index]()
+        self.page.update()
+
+    # ================= Beranda =================
+
+    def get_prayer(self):
+        if self.prayer:
+            return self.prayer
+        if time.time() < self._prayer_retry_at:
+            return None
+        cached = db.ambil_jadwal(self.city, today())
+        if cached:
+            self.prayer = cached
+            return cached
+        try:
+            self.prayer = prayertimes.ambil_jadwal(self.city)
+            db.simpan_jadwal(self.city, today(), self.prayer)
+        except Exception:
+            self.prayer = None
+            self._prayer_retry_at = time.time() + 30
+        return self.prayer
+
+    def next_prayer(self):
+        jadwal = self.get_prayer()
+        if not jadwal:
+            return None, None
+        now = datetime.now()
+        for name, hm in jadwal:
+            h, m = map(int, hm.split(":")[:2])
+            target = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            if target > now:
+                return name, target
+        name, hm = jadwal[0]
+        h, m = map(int, hm.split(":")[:2])
+        return name + " (besok)", now.replace(hour=h, minute=m, second=0, microsecond=0) + timedelta(days=1)
+
+    def countdown_text(self):
+        _, target = self.next_prayer()
+        if not target:
+            return "--:--:--"
+        sec = max(0, int((target - datetime.now()).total_seconds()))
+        return f"{sec // 3600:02d}:{(sec % 3600) // 60:02d}:{sec % 60:02d}"
+
+    async def _countdown_loop(self):
+        while True:
+            await asyncio.sleep(1)
             try:
-                h, m = map(int, jam.split(":"))
-            except:
+                if self.index == 0:
+                    if self._countdown_label is not None:
+                        self._countdown_label.value = self.countdown_text()
+                        self._countdown_label.update()
+                    nama = self.next_prayer()[0] or ""
+                    if nama != self._hero_nama:
+                        self.refresh()
+            except Exception:
+                pass
+
+    def home_page(self):
+        checks = db.semua_ceklis()
+        statuses = db.status_ceklis(today())
+        done = sum(1 for r in checks if statuses.get(r["id"], False))
+        total = len(checks)
+        progress = done / total if total else 0
+        next_name, _ = self.next_prayer()
+        self._hero_nama = next_name
+        ayat = AYAT_HARIAN[date.today().toordinal() % len(AYAT_HARIAN)]
+        schedule = self.get_prayer()
+
+        theme_btn = ft.Container(
+            content=ft.Icon(ft.Icons.LIGHT_MODE_OUTLINED if self.dark else ft.Icons.DARK_MODE_OUTLINED,
+                            size=20, color=self.c["muted"]),
+            width=40, height=40, border_radius=20, bgcolor=self.c["surface2"],
+            on_click=self.toggle_dark, tooltip="Ganti tema terang/gelap")
+
+        self._countdown_label = ft.Text(self.countdown_text(), size=28,
+                                        weight=ft.FontWeight.BOLD, color="#FFFFFF")
+        hero = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Column([
+                        ft.Text("SHOLAT BERIKUTNYA", size=11, weight=ft.FontWeight.BOLD, color=GOLD),
+                        ft.Text(next_name or "Memuat jadwal...", size=24, weight=ft.FontWeight.BOLD, color="#FFFFFF"),
+                    ], spacing=2, expand=True),
+                    ft.Column([
+                        self._countdown_label,
+                        ft.Text("menuju adzan", size=11, color="#FFFFFFB0"),
+                    ], horizontal_alignment=ft.CrossAxisAlignment.END, spacing=0),
+                ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Container(height=10),
+                ft.Row([
+                    ft.Row([ft.Icon(ft.Icons.LOCATION_ON_OUTLINED, size=13, color="#FFFFFFB0"),
+                            ft.Text(self.city, size=12, color="#FFFFFFB0")], spacing=4),
+                    ft.Text("Metode Kemenag RI", size=12, color="#FFFFFFB0"),
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ], spacing=0),
+            padding=20, border_radius=26, gradient=self._gradient(),
+            shadow=ft.BoxShadow(blur_radius=24, spread_radius=0, color="#2E000000",
+                                offset=ft.Offset(0, 7)))
+
+        berikutnya = (next_name or "").replace(" (besok)", "")
+        if schedule:
+            pills = []
+            for name, hm in schedule:
+                aktif = name == berikutnya
+                pills.append(ft.Container(
+                    content=ft.Column([
+                        ft.Text(name, size=11, color=self.accent if aktif else self.c["muted"]),
+                        ft.Text(hm, size=15, weight=ft.FontWeight.BOLD,
+                                color=self.accent if aktif else self.c["text"]),
+                    ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.Padding.symmetric(horizontal=13, vertical=8),
+                    bgcolor=GOLD + "26" if aktif else self.c["surface"],
+                    border=None if aktif else ft.Border.all(1, self.c["line"]),
+                    border_radius=16))
+            schedule_row = ft.Row(pills, wrap=True, spacing=6, run_spacing=6,
+                                  alignment=ft.MainAxisAlignment.CENTER)
+        else:
+            schedule_row = ft.Text("Belum ada jadwal. Atur kota di tab Atur atau cek internet.",
+                                   size=12, color=self.c["muted"])
+
+        ayat_card = self.card(ft.Column([
+            ft.Row([
+                ft.Container(content=ft.Icon(ft.Icons.FORMAT_QUOTE, size=15, color=GOLD),
+                             width=32, height=32, border_radius=16, bgcolor=GOLD + "22",
+                             alignment=ft.Alignment.CENTER),
+                ft.Column([
+                    ft.Text("Ayat Hari Ini", size=14, weight=ft.FontWeight.BOLD, color=self.c["text"]),
+                    ft.Text(f"{ayat[0]} · {ayat[1]}", size=11, color=self.c["muted"]),
+                ], spacing=1, expand=True),
+            ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Container(height=6),
+            ft.Text(ayat[2], size=22, font_family=FONT_ARAB, text_align=ft.TextAlign.RIGHT, color=self.c["text"]),
+            ft.Container(height=4),
+            ft.Text(f"“{ayat[3]}”", size=12, color=self.c["muted"], italic=True),
+        ]))
+
+        donut = ft.Stack([
+            ft.ProgressRing(value=progress, width=72, height=72, stroke_width=8,
+                            color=GOLD, bgcolor=self.c["surface2"]),
+            ft.Container(width=72, height=72, alignment=ft.Alignment.CENTER,
+                         content=ft.Text(f"{done}/{total}", size=14, weight=ft.FontWeight.BOLD,
+                                         color=self.c["text"])),
+        ], width=72, height=72)
+        checklist_rows = []
+        for item in checks:
+            selesai = statuses.get(item["id"], False)
+            checklist_rows.append(ft.Container(
+                content=ft.Row([
+                    ft.Checkbox(value=selesai, active_color=self.accent,
+                                on_change=lambda e, iid=item["id"]: self.toggle_check(iid, e.control.value)),
+                    ft.Text(item["nama"], size=13, color=self.c["text"], expand=True,
+                            style=ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH) if selesai else None),
+                ], spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                padding=ft.Padding.symmetric(horizontal=8, vertical=0),
+                bgcolor=self.accent + "14" if selesai else self.c["surface2"],
+                border_radius=12))
+        checklist_card = self.card(ft.Column([
+            self.section("Checklist Hari Ini"),
+            ft.Row([donut, ft.Column([
+                ft.Text(f"{int(progress * 100)}% selesai hari ini", size=13,
+                        weight=ft.FontWeight.BOLD, color=self.c["text"]),
+                ft.Text("Tandai ibadahmu untuk menjaga streak", size=11, color=self.c["muted"]),
+            ], spacing=2, expand=True)], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ft.Container(height=4),
+            *checklist_rows,
+        ], spacing=5))
+
+        return ft.Column([
+            self.header("Assalamu'alaikum 👋", f"{format_tanggal()} · {self.city}", action=theme_btn),
+            ft.Container(height=4), hero,
+            self.section("Jadwal Sholat"), schedule_row,
+            ayat_card,
+            checklist_card,
+        ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
+
+    def toggle_check(self, item_id, value):
+        db.set_ceklis(item_id, today(), value)
+        achievements.evaluasi()
+        self.refresh()
+
+    # ================= Kegiatan =================
+
+    def hapus_kecil(self, row):
+        """Tombol X kecil - dengan dialog konfirmasi (anti hapus tak sengaja)."""
+        return ft.Container(
+            content=ft.Icon(ft.Icons.CLOSE, size=15, color=DANGER),
+            width=36, height=36, border_radius=18,
+            alignment=ft.Alignment.CENTER, tooltip="Hapus",
+            on_click=lambda e: self.konfirmasi_hapus(row))
+
+    def konfirmasi_hapus(self, row, dialog_induk=None):
+        """Dialog 'yakin hapus?' - dipakai tombol X maupun tombol Hapus di form."""
+
+        def ya(e=None):
+            db.hapus(row["id"])
+            self.close_dialog(konfirmasi)
+            if dialog_induk is not None:
+                self.close_dialog(dialog_induk)
+            self.notify("Kegiatan dihapus")
+            self.refresh()
+
+        konfirmasi = ft.AlertDialog(
+            modal=True, title=ft.Text("Hapus kegiatan?"),
+            content=ft.Text(f'"{row["nama"]}" akan dihapus permanen.'),
+            actions=[
+                ft.TextButton("Batal", on_click=lambda e: self.close_dialog(konfirmasi)),
+                ft.FilledButton("Hapus", bgcolor=DANGER, on_click=ya),
+            ])
+        self.page.show_dialog(konfirmasi)
+
+    def tombol_selesai(self, iid, done):
+        """Tombol centang lingkaran 44px - pengganti Checkbox bawaan."""
+        return ft.Container(
+            content=ft.Icon(ft.Icons.CHECK_CIRCLE if done else ft.Icons.RADIO_BUTTON_UNCHECKED,
+                            size=26, color=self.accent if done else self.c["muted"]),
+            width=44, height=44, border_radius=22, alignment=ft.Alignment.CENTER,
+            bgcolor=self.accent + "1A" if done else None,
+            tooltip="Tandai selesai",
+            on_click=lambda e: self.set_activity(iid, not done))
+
+    def empty_state(self, judul, pesan):
+        """Kartu keadaan kosong - SEMUA isinya digaransi lurus tengah
+        lewat pola _center() (tiap elemen dibungkus baris selebar kartu)."""
+        return self.card(ft.Column([
+            self._center(ft.Container(
+                content=ft.Icon(ft.Icons.EVENT_AVAILABLE_OUTLINED, size=26, color=GOLD),
+                width=52, height=52, border_radius=26, bgcolor=GOLD + "1A",
+                alignment=ft.Alignment.CENTER)),
+            self._center(ft.Text(judul, size=14, weight=ft.FontWeight.BOLD,
+                                 color=self.c["text"],
+                                 text_align=ft.TextAlign.CENTER)),
+            self._center(ft.Text(pesan, size=12, color=self.c["muted"],
+                                 text_align=ft.TextAlign.CENTER)),
+        ], spacing=6), padding=18)
+
+    def activities_page(self):
+        rows = db.kegiatan_hari_ini(nama_hari_ini())
+        status = db.status_kegiatan(today())
+        semua = db.semua()
+        tambah_btn = ft.Container(
+            content=ft.Row([ft.Icon(ft.Icons.ADD, size=15, color=GOLD),
+                            ft.Text("Tambah", size=13, weight=ft.FontWeight.BOLD, color=GOLD)],
+                           spacing=4),
+            border=ft.Border.all(1.5, GOLD), border_radius=999,
+            padding=ft.Padding.symmetric(horizontal=12, vertical=7),
+            on_click=lambda e: self.open_form_kegiatan())
+        controls = [
+            self.header("Kegiatan", "Rutinitas & target pribadimu"),
+            self.section("Hari Ini", trailing=tambah_btn),
+        ]
+        if not rows:
+            pesan = ("Tidak ada kegiatan terjadwal untuk hari ini.\n"
+                     "Kegiatan lainnya ada di daftar bawah.") if semua else \
+                "Tekan + Tambah untuk membuat rutinitas baru."
+            controls.append(self.empty_state("Belum ada kegiatan hari ini", pesan))
+        for row in rows:
+            controls.append(self.activity_card(row, status.get(row["id"], False)))
+        hitung = ft.Text(f"{len(semua)} total", size=12,
+                         color=self.c["muted"]) if semua else None
+        controls.append(self.section("Semua Kegiatan", trailing=hitung))
+        controls.extend(self.all_activity_cards())
+        return ft.Column(controls, scroll=ft.ScrollMode.AUTO, expand=True, spacing=8)
+
+    def activity_card(self, row, done):
+        """Kartu Hari Ini: tap kartu = edit, lingkaran = selesai, X = hapus."""
+        return self.card(ft.Row([
+            self.tombol_selesai(row["id"], done),
+            ft.Column([
+                ft.Text(row["nama"], size=14, weight=ft.FontWeight.BOLD,
+                        color=self.c["text"], max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        style=ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH) if done else None),
+                ft.Text(f"{row['jam']} · {row['kategori']}", size=11, color=self.c["muted"]),
+            ], spacing=2, expand=True),
+            self.hapus_kecil(row),
+        ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            padding=8, on_click=lambda e: self.open_form_kegiatan(data=row))
+
+    def all_activity_cards(self):
+        """Kartu Semua Kegiatan: tap kartu = edit, X = hapus."""
+        rows = db.semua()
+        if not rows:
+            return [self.card(ft.Column([
+                self._center(ft.Text("Belum ada kegiatan tersimpan.", size=13,
+                                     color=self.c["muted"],
+                                     text_align=ft.TextAlign.CENTER)),
+                self._center(ft.Text("Tekan + Tambah untuk membuat yang pertama.",
+                                     size=11, color=self.c["muted"],
+                                     text_align=ft.TextAlign.CENTER)),
+            ], spacing=2), padding=16)]
+        out = []
+        for row in rows:
+            hari_ini = row["hari"] in ("Setiap hari", nama_hari_ini())
+            info = ft.Row(spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            if hari_ini:
+                info.controls.append(ft.Container(width=7, height=7, border_radius=4, bgcolor=GOLD))
+            info.controls.append(ft.Text(f"{row['jam']} · {row['hari']} · {row['kategori']}",
+                                         size=11, color=self.c["muted"]))
+            out.append(self.card(ft.Row([
+                ft.Column([
+                    ft.Text(row["nama"], size=14, weight=ft.FontWeight.BOLD,
+                            color=self.c["text"], max_lines=1,
+                            overflow=ft.TextOverflow.ELLIPSIS),
+                    info,
+                ], spacing=2, expand=True),
+                ft.Icon(ft.Icons.EDIT_OUTLINED, size=15, color=self.c["muted"]),
+                self.hapus_kecil(row),
+            ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                padding=10,
+                on_click=lambda e, r=row: self.open_form_kegiatan(data=r)))
+        return out
+
+    def open_form_kegiatan(self, e=None, data=None):
+        """Form tambah/edit kegiatan.
+        Hari & kategori memakai CHIP (bukan dropdown) - andal di HP."""
+        edit = data is not None
+        name = ft.TextField(label="Nama kegiatan", autofocus=True,
+                            value=data["nama"] if edit else "", border_radius=14)
+        jam = ft.TextField(label="Jam (contoh 19:30)",
+                           value=data["jam"] if edit else "19:00", border_radius=14)
+        pilihan = {"hari": data["hari"] if edit else "Setiap hari",
+                   "kategori": data["kategori"] if edit else "Pribadi"}
+
+        def chip_row(judul, opsi, kunci):
+            def buat(label):
+                aktif = pilihan[kunci] == label
+                return ft.Container(
+                    content=ft.Text(label, size=12, weight=ft.FontWeight.BOLD,
+                                    color="#FFFFFF" if aktif else self.c["text"]),
+                    bgcolor=self.accent if aktif else None,
+                    border=None if aktif else ft.Border.all(1, self.c["line"]),
+                    border_radius=999,
+                    padding=ft.Padding.symmetric(horizontal=13, vertical=8),
+                    on_click=lambda e, l=label: pilih(l))
+
+            row = ft.Row([buat(x) for x in opsi], wrap=True, spacing=6, run_spacing=6)
+
+            def pilih(label):
+                pilihan[kunci] = label
+                row.controls = [buat(x) for x in opsi]
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
+
+            return ft.Column([ft.Text(judul, size=12, color=self.c["muted"]), row],
+                             spacing=6)
+
+        def simpan(e=None):
+            nama = name.value.strip()
+            nilai_jam = jam.value.strip()
+            name.error_text = None
+            jam.error_text = None
+            if not nama:
+                name.error_text = "Nama belum diisi"
+                self.page.update()
+                return
+            try:
+                bagian = nilai_jam.split(":")
+                h, m = int(bagian[0]), int(bagian[1])
+                valid = len(bagian) == 2 and 0 <= h <= 23 and 0 <= m <= 59
+            except (ValueError, IndexError):
+                valid = False
+            if not valid:
+                jam.error_text = "Format jam: HH:MM (contoh 19:30)"
+                self.page.update()
+                return
+            jam_rapi = f"{h:02d}:{m:02d}"
+            if edit:
+                ubah_kegiatan(data["id"], nama, jam_rapi,
+                              pilihan["hari"], pilihan["kategori"])
+                self.notify("Kegiatan diperbarui")
+            else:
+                db.tambah(nama, jam_rapi, pilihan["hari"], pilihan["kategori"])
+                self.notify("Kegiatan ditambahkan")
+            self.close_dialog(dlg)
+            self.refresh()
+
+        actions = [ft.TextButton("Batal", on_click=lambda e: self.close_dialog(dlg))]
+        if edit:
+            actions.append(ft.TextButton(
+                "Hapus", style=ft.ButtonStyle(color=DANGER),
+                on_click=lambda e: self.konfirmasi_hapus(data, dlg)))
+        actions.append(ft.FilledButton("Simpan", on_click=simpan, bgcolor=self.accent))
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Edit Kegiatan" if edit else "Tambah Kegiatan"),
+            content=ft.Column([
+                name, jam,
+                chip_row("Hari", ["Setiap hari"] + HARI_ID, "hari"),
+                chip_row("Kategori",
+                         ["Pribadi", "Ibadah", "Belajar", "Kesehatan", "Lainnya"],
+                         "kategori"),
+            ], spacing=14, tight=True, width=self.d_w() - 40),
+            actions=actions)
+        self.page.show_dialog(dlg)
+
+    def close_dialog(self, dlg):
+        try:
+            self.page.pop_dialog()
+        except Exception:
+            pass
+
+    def set_activity(self, iid, value):
+        db.set_kegiatan_selesai(iid, today(), value)
+        self.refresh()
+
+    # ================= Fokus (timer) =================
+
+    def focus_page(self):
+        mins = self.timer_total // 60
+        progress = 1 - self.timer_left / self.timer_total if self.timer_total else 0
+        self._fokus_ring = ft.ProgressRing(value=progress, width=200, height=200,
+                                           stroke_width=13, color=GOLD,
+                                           bgcolor=self.c["surface2"])
+        self._fokus_time = ft.Text(f"{self.timer_left // 60:02d}:{self.timer_left % 60:02d}",
+                                   size=40, weight=ft.FontWeight.BOLD, color=self.c["text"])
+        status_chip = ft.Container(
+            content=ft.Text("BERJALAN" if self.timer_running else "SIAP", size=10,
+                            weight=ft.FontWeight.BOLD, color="#FFFFFF"),
+            bgcolor=self.accent if self.timer_running else self.c["muted"],
+            border_radius=999, padding=ft.Padding.symmetric(horizontal=12, vertical=4))
+        ring_stack = ft.Stack([
+            self._fokus_ring,
+            ft.Container(width=200, height=200, alignment=ft.Alignment.CENTER,
+                         content=ft.Column([
+                             self._fokus_time,
+                             status_chip,
+                         ], alignment=ft.MainAxisAlignment.CENTER,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8)),
+        ], width=200, height=200)
+        duration_options = [5, 10, 15, 25, 30, 45, 60]
+        chips = ft.Row([
+            ft.Container(
+                content=ft.Text(f"{m} m", size=12, weight=ft.FontWeight.BOLD,
+                                color="#FFFFFF" if mins == m else self.c["text"]),
+                bgcolor=self.accent if mins == m else None,
+                border=None if mins == m else ft.Border.all(1, self.c["line"]),
+                border_radius=999, padding=ft.Padding.symmetric(horizontal=13, vertical=7),
+                on_click=lambda e, x=m: self.set_timer_minutes(x))
+            for m in duration_options], wrap=True, spacing=6, run_spacing=6,
+            alignment=ft.MainAxisAlignment.CENTER)
+        return ft.Column([
+            self.header("Fokus Ibadah", "Tenang, khusyuk, tanpa distraksi"),
+            self.card(ft.Column([
+                ft.Text("Durasi", size=12, color=self.c["muted"], text_align=ft.TextAlign.CENTER),
+                chips,
+                ft.Container(height=10),
+                self._center(ring_stack),
+                ft.Container(height=12),
+                ft.Row([
+                    ft.FilledButton("Mulai" if not self.timer_running else "Jeda",
+                                    icon=ft.Icons.PLAY_ARROW if not self.timer_running else ft.Icons.PAUSE,
+                                    on_click=self.toggle_timer, bgcolor=self.accent, height=44),
+                    ft.OutlinedButton("Reset", icon=ft.Icons.RESTART_ALT,
+                                      on_click=self.reset_timer, height=44),
+                ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                ft.Container(height=6),
+                self._center(ft.Container(
+                    content=ft.Text(f"Total hari ini: {db.total_timer_hari_ini()} menit",
+                                    size=12, color=self.c["muted"]),
+                    bgcolor=self.c["surface2"], border_radius=999,
+                    padding=ft.Padding.symmetric(horizontal=14, vertical=5))),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=20),
+        ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
+
+    def _update_fokus_ui(self):
+        try:
+            if self._fokus_time is not None:
+                self._fokus_time.value = (f"{self.timer_left // 60:02d}:"
+                                          f"{self.timer_left % 60:02d}")
+                self._fokus_time.update()
+            if self._fokus_ring is not None and self.timer_total:
+                self._fokus_ring.value = max(0.0, min(1.0, 1 - self.timer_left / self.timer_total))
+                self._fokus_ring.update()
+        except Exception:
+            pass
+
+    def set_timer_minutes(self, minutes):
+        if self.timer_running:
+            return
+        self.timer_total = minutes * 60
+        self.timer_left = self.timer_total
+        self.refresh()
+
+    def toggle_timer(self, e=None):
+        if self.timer_running:
+            self.timer_running = False
+            self.refresh()
+            return
+        if self.timer_left <= 0:
+            self.timer_left = self.timer_total
+        self.timer_running = True
+        self.refresh()
+        self.timer_task = self.page.run_task(self._timer_loop)
+
+    async def _timer_loop(self):
+        while self.timer_running and self.timer_left > 0:
+            await asyncio.sleep(1)
+            if not self.timer_running:
+                return
+            self.timer_left -= 1
+            self._update_fokus_ui()
+        self.timer_running = False
+        db.catat_timer(self.timer_total // 60)
+        achievements.evaluasi()
+        self.notify("Sesi timer selesai. Alhamdulillah.")
+        self.refresh()
+
+    def reset_timer(self, e=None):
+        self.timer_running = False
+        self.timer_left = self.timer_total
+        self.refresh()
+
+    # ================= Tasbih =================
+
+    def tasbih_page(self):
+        progress = min(1, self.tasbih_count / self.tasbih_target) if self.tasbih_target else 0
+        sisa = max(0, self.tasbih_target - self.tasbih_count)
+        tercapai = self.tasbih_count > 0 and self.tasbih_count >= self.tasbih_target
+
+        lit = self.tasbih_count % 33
+        if lit == 0 and self.tasbih_count > 0:
+            lit = 33
+        R = 95
+        beads = []
+        for i in range(33):
+            a = 2 * math.pi * i / 33 - math.pi / 2
+            x, y = R + 79 * math.cos(a), R + 79 * math.sin(a)
+            beads.append(ft.Container(width=9, height=9, border_radius=9,
+                                      bgcolor=self.accent if i < lit else self.c["line"],
+                                      left=x - 4.5, top=y - 4.5))
+        tengah = ft.Container(width=2 * R, height=2 * R, alignment=ft.Alignment.CENTER,
+                              content=ft.Column([
+                                  ft.Text(str(self.tasbih_count), size=42,
+                                          weight=ft.FontWeight.BOLD, color=self.accent),
+                                  ft.Text(f"dari {self.tasbih_target}", size=12,
+                                          color=self.c["muted"]),
+                              ], horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                 alignment=ft.MainAxisAlignment.CENTER, spacing=0))
+        ring = ft.Container(content=ft.Stack([*beads, tengah], width=2 * R, height=2 * R),
+                            width=2 * R, height=2 * R, border_radius=R,
+                            bgcolor=self.c["surface2"], on_click=self.tap_tasbih)
+
+        if tercapai:
+            status_chip = ft.Container(
+                content=ft.Text("TARGET TERCAPAI · MASYAALLAH", size=11,
+                                weight=ft.FontWeight.BOLD, color=GOLD),
+                bgcolor=GOLD + "22", border_radius=999,
+                padding=ft.Padding.symmetric(horizontal=12, vertical=5))
+        else:
+            status_chip = ft.Container(
+                content=ft.Text(f"Sisa {sisa} lagi", size=12, color=self.c["muted"]),
+                bgcolor=self.c["surface2"], border_radius=999,
+                padding=ft.Padding.symmetric(horizontal=12, vertical=5))
+
+        tap_btn = ft.Container(
+            content=ft.Row([
+                ft.Icon(ft.Icons.TOUCH_APP, color="#FFFFFF", size=22),
+                ft.Text("TAP UNTUK BERHITUNG", color="#FFFFFF", size=13,
+                        weight=ft.FontWeight.BOLD),
+            ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
+            height=52, border_radius=26, gradient=self._gradient(),
+            on_click=self.tap_tasbih, alignment=ft.Alignment.CENTER)
+
+        return ft.Column([
+            self.header("Tasbih Digital", f"{self.dzikir} · target {self.tasbih_target}"),
+            self.card(ft.Column([
+                self._center(ft.Text(self.dzikir, size=18, weight=ft.FontWeight.BOLD,
+                                     color=self.c["text"])),
+                ft.Container(height=8),
+                ft.ProgressBar(value=progress, color=GOLD,
+                               bgcolor=self.c["surface2"], height=7),
+                ft.Container(height=12),
+                self._center(ring),
+                ft.Container(height=12),
+                self._center(status_chip),
+                ft.Container(height=14),
+                tap_btn,
+                ft.Container(height=10),
+                ft.Row([
+                    ft.OutlinedButton("Reset", icon=ft.Icons.RESTART_ALT,
+                                      on_click=self.reset_tasbih, expand=True),
+                    ft.OutlinedButton("Target", icon=ft.Icons.FLAG_OUTLINED,
+                                      on_click=self.choose_target, expand=True),
+                ], spacing=8),
+            ], spacing=0), padding=18),
+            self.card(ft.Column([
+                self.section("Pilih Dzikir"),
+                ft.Row([ft.Chip(label=x, selected=x == self.dzikir, show_checkmark=True,
+                                on_select=lambda e, x=x: self.set_dzikir(x)) for x in DZIKIR],
+                       wrap=True, spacing=8, run_spacing=8,
+                       alignment=ft.MainAxisAlignment.CENTER),
+            ])),
+        ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
+
+    def tap_tasbih(self, e=None):
+        self.tasbih_count += 1
+        db.simpan_tasbih(today(), 1)
+        if self.tasbih_count == self.tasbih_target:
+            self.notify("Target tercapai. MasyaAllah!")
+        achievements.evaluasi()
+        self.refresh()
+
+    def reset_tasbih(self, e=None):
+        self.tasbih_count = 0
+        db.reset_tasbih(today())
+        self.refresh()
+
+    def choose_target(self, e=None):
+        dd = ft.Dropdown(label="Target", value=str(self.tasbih_target), border_radius=14,
+                         options=[ft.DropdownOption(str(x)) for x in [33, 99, 100, 333, 1000]])
+
+        def save(e):
+            self.tasbih_target = int(dd.value)
+            db.simpan_pengaturan("tasbih_target", dd.value)
+            self.close_dialog(dlg)
+            self.refresh()
+
+        dlg = ft.AlertDialog(modal=True, title=ft.Text("Target Tasbih"), content=dd,
+                             actions=[ft.TextButton("Batal", on_click=lambda e: self.close_dialog(dlg)),
+                                      ft.FilledButton("Simpan", on_click=save, bgcolor=self.accent)])
+        self.page.show_dialog(dlg)
+
+    def set_dzikir(self, value):
+        self.dzikir = value
+        db.simpan_pengaturan("dzikir", value)
+        self.refresh()
+
+    # ================= Atur =================
+
+    def action_tile(self, icon, label, on_click):
+        return self.card(ft.Row([
+            ft.Container(content=ft.Icon(icon, size=20, color=GOLD),
+                         width=40, height=40, border_radius=13, bgcolor=GOLD + "1E",
+                         alignment=ft.Alignment.CENTER),
+            ft.Text(label, size=13, weight=ft.FontWeight.BOLD, color=self.c["text"]),
+        ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            padding=12, on_click=on_click, expand=True)
+
+    def settings_page(self):
+        accent_row = ft.Row([
+            ft.Container(width=32, height=32, border_radius=16, bgcolor=c,
+                         border=ft.Border.all(3, GOLD) if self.accent == c else None,
+                         on_click=lambda e, c=c: self.set_accent(c))
+            for c in ACCENTS], spacing=10)
+        return ft.Column([
+            self.header("Pengaturan", "Personalisasi IbadahKu"),
+            self.card(ft.Column([
+                self.section("Tampilan"),
+                ft.Switch(label="Mode gelap", value=self.dark, active_color=self.accent,
+                          on_change=self.toggle_dark),
+                ft.Container(height=4),
+                ft.Text("Warna aksen", size=12, color=self.c["muted"]),
+                accent_row,
+            ], spacing=6)),
+            self.card(ft.Column([
+                self.section("Lokasi & Jadwal Sholat"),
+                ft.Dropdown(label="Kota", value=self.city, border_radius=14,
+                            options=[ft.DropdownOption(x) for x in sorted(prayertimes.KOTA_KOORDINAT.keys())],
+                            on_select=self.set_city),
+                ft.Text("Jadwal dari AlAdhan (metode Kemenag). Tanpa internet, cache terakhir dipakai.",
+                        size=11, color=self.c["muted"]),
+            ], spacing=6)),
+            self.card(ft.Column([
+                self.section("Pengingat"),
+                ft.Switch(label="Pengingat sholat saat aplikasi aktif", value=self.alarm,
+                          active_color=self.accent, on_change=self.toggle_alarm),
+                ft.Text("Versi web/desktop hanya mengingatkan selama aplikasi terbuka.",
+                        size=11, color=self.c["muted"]),
+            ], spacing=6)),
+            ft.Row([
+                self.action_tile(ft.Icons.MENU_BOOK_OUTLINED, "Doa Harian", self.open_doa),
+                self.action_tile(ft.Icons.EXPLORE_OUTLINED, "Arah Kiblat", self.open_kiblat),
+            ], spacing=8),
+            ft.Row([
+                self.action_tile(ft.Icons.INSERT_CHART_OUTLINED, "Statistik", self.open_stats),
+                self.action_tile(ft.Icons.EMOJI_EVENTS_OUTLINED, "Pencapaian", self.open_badges),
+            ], spacing=8),
+            ft.Container(height=4),
+            ft.Text("IbadahKu · dibuat dengan Flet", size=11, color=self.c["muted"],
+                    text_align=ft.TextAlign.CENTER),
+        ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
+
+    def toggle_dark(self, e=None):
+        val = getattr(getattr(e, "control", None), "value", None)
+        self.dark = (not self.dark) if val is None else val
+        db.simpan_pengaturan("dark_mode", "1" if self.dark else "0")
+        self._configure_page()
+
+    def set_accent(self, color):
+        self.accent = color
+        db.simpan_pengaturan("accent", color)
+        self._configure_page()
+
+    def set_city(self, e):
+        self.city = e.control.value
+        db.simpan_pengaturan("kota", self.city)
+        self.prayer = None
+        self.refresh()
+
+    def toggle_alarm(self, e):
+        self.alarm = e.control.value
+        db.simpan_pengaturan("alarm", "1" if self.alarm else "0")
+        self.notify("Pengingat diaktifkan" if self.alarm else "Pengingat dimatikan")
+
+    # ================= Dialog: Doa =================
+
+    def open_doa(self, e=None):
+        self.search_doa = ""
+        self.favorite_only = False
+        search = ft.TextField(label="Cari doa", prefix_icon=ft.Icons.SEARCH, border_radius=14,
+                              on_change=lambda e: self.render_doa_dialog(body, search.value))
+        fav = ft.Checkbox(label="Favorit saja", active_color=GOLD,
+                          on_change=lambda e: self.toggle_fav_filter(body, e.control.value))
+        body = ft.Column([], scroll=ft.ScrollMode.AUTO, height=self.d_h())
+        self.render_doa_dialog(body, "")
+        dlg = ft.AlertDialog(modal=True, title=ft.Text("Doa Harian"),
+                             content=ft.Column([search, fav, body], tight=True, width=self.d_w()),
+                             actions=[ft.TextButton("Tutup", on_click=lambda e: self.close_dialog(dlg))])
+        self.page.show_dialog(dlg)
+
+    def toggle_fav_filter(self, body, value):
+        self.favorite_only = value
+        self.render_doa_dialog(body, self.search_doa)
+
+    def render_doa_dialog(self, body, query):
+        self.search_doa = query.lower()
+        favs = set(db.semua_doa_favorit())
+        items = []
+        for i, d in enumerate(DOA[:24]):
+            if self.favorite_only and i not in favs:
                 continue
-            waktunya = sekarang.replace(hour=h, minute=m, second=0, microsecond=0)
-            pengingat = waktunya - datetime.timedelta(minutes=offset)
-            kunci = f"{tanggal_hari_ini}|{sumber_id}|{nama}@{jam}"
-            if pengingat <= sekarang < waktunya and kunci not in self.alarm_terkirim:
-                self.alarm_terkirim.add(kunci)
-                pesan = f"{nama} pukul {jam} - sekitar {offset} menit lagi"
-                kirim_notif("Pengingat IbadahKu", pesan)
-                if self.bunyi:
-                    try:
-                        self.bunyi.play()
-                    except: pass
-                PopupAlarm("Segera Waktunya!", pesan).open()
+            if self.search_doa and self.search_doa not in (d["judul"] + " " + d["latin"] + " " + d["arti"]).lower():
+                continue
+            star = ft.IconButton(icon=ft.Icons.STAR if i in favs else ft.Icons.STAR_BORDER,
+                                 icon_color=GOLD if i in favs else self.c["muted"],
+                                 on_click=lambda e, i=i: self.toggle_favorite(i, body))
+            items.append(self.card(ft.Column([
+                ft.Row([
+                    ft.Container(content=ft.Text(str(i + 1), size=11, weight=ft.FontWeight.BOLD, color=GOLD),
+                                 width=24, height=24, border_radius=12, bgcolor=GOLD + "1E",
+                                 alignment=ft.Alignment.CENTER),
+                    ft.Text(d["judul"], size=13, weight=ft.FontWeight.BOLD, color=self.c["text"], expand=True),
+                    star]),
+                ft.Text(d["arab"], size=20, font_family=FONT_ARAB,
+                        text_align=ft.TextAlign.RIGHT, color=self.c["text"]),
+                ft.Text(d["latin"], size=11, color=self.c["muted"], italic=True),
+                ft.Text(d["arti"], size=12, color=self.c["text"]),
+            ], spacing=5), padding=12))
+        body.controls = items or [ft.Text("Doa tidak ditemukan.", color=self.c["muted"])]
+        try:
+            self.page.update()
+        except Exception:
+            pass
+
+    def toggle_favorite(self, i, body):
+        active = not db.doa_favorit(i)
+        db.set_doa_favorit(i, active)
+        self.render_doa_dialog(body, self.search_doa)
+
+    # ================= Dialog: Kiblat =================
+
+    def open_kiblat(self, e=None):
+        lat, lon = prayertimes.KOTA_KOORDINAT.get(self.city, (-6.2, 106.82))
+        bearing = prayertimes.arah_kiblat(lat, lon)
+        dlg = ft.AlertDialog(
+            modal=True, title=ft.Text("Arah Kiblat"),
+            content=ft.Column([
+                self.compass_widget(bearing),
+                ft.Text(f"{bearing:.1f}° dari utara · {self.city}", size=14,
+                        weight=ft.FontWeight.BOLD, color=self.c["text"],
+                        text_align=ft.TextAlign.CENTER),
+                ft.Text("Hadap ke arah UTARA, lalu putar searah jarum jam\nsebesar sudut di atas.",
+                        size=12, color=self.c["muted"], text_align=ft.TextAlign.CENTER),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10, width=260),
+            actions=[ft.TextButton("Tutup", on_click=lambda e: self.close_dialog(dlg))])
+        self.page.show_dialog(dlg)
+
+    def compass_widget(self, bearing):
+        marks = []
+        for angle, label in [(0, "U"), (90, "T"), (180, "S"), (270, "B")]:
+            rad = math.radians(angle - 90)
+            x = 110 + 86 * math.cos(rad)
+            y = 110 + 86 * math.sin(rad)
+            marks.append(ft.Container(
+                content=ft.Text(label, size=14, weight=ft.FontWeight.BOLD,
+                                color=GOLD if label == "U" else self.c["muted"]),
+                left=x - 10, top=y - 10, width=20, height=20,
+                alignment=ft.Alignment.CENTER))
+        needle = ft.Container(
+            width=220, height=220, alignment=ft.Alignment.CENTER,
+            content=ft.Icon(ft.Icons.NAVIGATION, size=64, color=DANGER,
+                            rotate=ft.Rotate(angle=math.radians(bearing))))
+        return ft.Container(
+            content=ft.Stack([
+                ft.Container(width=220, height=220, border_radius=110,
+                             bgcolor=self.c["surface2"],
+                             border=ft.Border.all(2, GOLD + "66")),
+                *marks, needle,
+                ft.Container(width=14, height=14, border_radius=7, bgcolor=GOLD,
+                             left=103, top=103),
+            ], width=220, height=220),
+            padding=10)
+
+    # ================= Dialog: Statistik & Pencapaian =================
+
+    def open_stats(self, e=None):
+        w = self.d_w()
+        data = db.data_grafik_mingguan()
+        maxv = max(1, max(x["menit"] for x in data))
+        bars = []
+        for x in data:
+            h = max(8, int(110 * x["menit"] / maxv))
+            bars.append(ft.Column([
+                ft.Container(width=22, height=h, bgcolor=GOLD, border_radius=8),
+                ft.Text(SINGKAT_HARI.get(x["hari"], x["hari"]), size=10, color=self.c["muted"]),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.END, spacing=4))
+        menit, tasbih, aktif = db.ringkasan_minggu((date.today() - timedelta(days=6)).isoformat())
+        tiles = ft.Row([
+            self.stat_tile("Menit fokus", str(menit)),
+            self.stat_tile("Tasbih", str(tasbih)),
+            self.stat_tile("Hari aktif", str(aktif)),
+        ], spacing=8)
+        content = ft.Column([
+            tiles,
+            ft.Text("Fokus 7 Hari", size=15, weight=ft.FontWeight.BOLD, color=self.c["text"]),
+            ft.Container(ft.Row(bars, alignment=ft.MainAxisAlignment.SPACE_AROUND,
+                                vertical_alignment=ft.CrossAxisAlignment.END),
+                         height=150, bgcolor=self.c["surface2"], border_radius=16, padding=10),
+            ft.Text("Grafik memakai menit timer yang tersimpan.", size=11, color=self.c["muted"]),
+        ], width=w, spacing=14)
+        dlg = ft.AlertDialog(modal=True, title=ft.Text("Statistik 7 Hari"), content=content,
+                             actions=[ft.TextButton("Tutup", on_click=lambda e: self.close_dialog(dlg))])
+        self.page.show_dialog(dlg)
+
+    def stat_tile(self, label, value):
+        return ft.Container(
+            content=ft.Column([
+                ft.Text(value, size=21, weight=ft.FontWeight.BOLD, color=self.accent),
+                ft.Text(label, size=10, color=self.c["muted"]),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
+            padding=12, bgcolor=self.c["surface2"], border_radius=16, expand=True)
+
+    def badge_tile(self, b):
+        """Tile pencapaian dengan expand=True - mustahil overflow."""
+        unlocked = b["tercapai"]
+        return ft.Container(
+            content=ft.Column([
+                ft.Text(b["emoji"], size=24, opacity=1.0 if unlocked else 0.4),
+                ft.Text(b["judul"], size=11, weight=ft.FontWeight.BOLD,
+                        color=self.c["text"], text_align=ft.TextAlign.CENTER),
+                ft.Text(b["deskripsi"], size=9, color=self.c["muted"],
+                        text_align=ft.TextAlign.CENTER),
+            ], spacing=3, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            padding=8, border_radius=16, expand=True,
+            bgcolor=GOLD + "1A" if unlocked else self.c["surface2"],
+            border=ft.Border.all(1.5, GOLD) if unlocked else None)
+
+    def open_badges(self, e=None):
+        achievements.evaluasi()
+        badges = achievements.semua_dengan_status()
+        w = self.d_w()
+        cols = 3 if w >= 420 else 2      # 2 kolom di HP, 3 di layar lebar
+        rows = []
+        for i in range(0, len(badges), cols):
+            rows.append(ft.Row([self.badge_tile(b) for b in badges[i:i + cols]],
+                               spacing=8))
+        dlg = ft.AlertDialog(modal=True, title=ft.Text("Pencapaian"),
+                             content=ft.Column(rows, scroll=ft.ScrollMode.AUTO,
+                                               height=self.d_h(), width=w, spacing=8),
+                             actions=[ft.TextButton("Tutup", on_click=lambda e: self.close_dialog(dlg))])
+        self.page.show_dialog(dlg)
+
+
+def main(page: ft.Page):
+    IbadahKu(page)
+
 
 if __name__ == "__main__":
-    IbadahKuApp().run()
+    ft.run(main, view=ft.AppView.WEB_BROWSER)

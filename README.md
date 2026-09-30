@@ -1,31 +1,17 @@
-# IbadahKu
+🕌 IbadahKu
+Aplikasi pendamping ibadah harian: jadwal sholat otomatis, checklist ibadah, timer fokus, tasbih digital, doa harian, arah kiblat, statistik, dan pencapaian — dibangun dengan Python + Flet.
 
-Aplikasi pendamping ibadah sederhana berbasis Kivy untuk desktop/Windows.
+✨ Fitur
+📅 Jadwal sholat otomatis per kota (API AlAdhan, metode Kemenag) + countdown real-time
+☑️ Checklist ibadah harian dengan streak
+📋 Kegiatan pribadi: tambah, edit, hapus, tandai selesai
+⏱️ Timer fokus ibadah
+📿 Tasbih digital dengan cincin 33 butir
+📖 Doa harian + favorit + pencarian
+🧭 Arah kiblat + kompas
+📊 Statistik 7 hari & sistem pencapaian
+🌙 Mode gelap + 5 pilihan warna aksen
 
-## Fitur
-- Jadwal sholat berdasarkan kota atau lokasi otomatis.
-- Pengingat waktu sholat dan kegiatan saat aplikasi terbuka.
-- Ceklis ibadah harian + streak.
-- Progress ibadah harian.
-- Timer sesi ibadah/belajar.
-- Tasbih digital dengan target 33, 99, 100, 1000, atau bebas.
-- Statistik aktivitas hari ini, 7 hari terakhir, dan total.
-- Koleksi 25+ doa pendek, navigasi acak, dan favorit yang tersimpan di SQLite.
-- Arah kiblat berdasarkan koordinat kota/lokasi.
-- Mode gelap yang berubah langsung.
-- Database SQLite lokal.
-
-## Menjalankan di Windows
-Dari folder yang berisi `main.py`:
-
-```powershell
-python main.py
-```
-
-## Instalasi dependency
-```powershell
-python -m pip install -r requirements.txt
-```
-
-## Catatan
-Fitur alarm/notifikasi bekerja ketika aplikasi sedang terbuka. Jadwal sholat membutuhkan koneksi internet saat data belum tersedia di cache.
+🚀 Cara Menjalankan
+pip install -r requirements.txtpython main.py
+Browser akan terbuka otomatis. Buka dari HP (satu jaringan WiFi) untuk tampilan mobile.

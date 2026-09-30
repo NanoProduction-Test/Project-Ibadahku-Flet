@@ -3,7 +3,20 @@ import sqlite3
 from datetime import date, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB = os.path.join(BASE_DIR, "ibadahku.db")
+# Database harus berada di lokasi writable agar build Android dapat menyimpan
+# checklist, tasbih, timer, favorit, dan pengaturan.
+DATA_DIR = os.path.join(os.path.expanduser("~"), "IbadahKu")
+os.makedirs(DATA_DIR, exist_ok=True)
+DB = os.path.join(DATA_DIR, "ibadahku.db")
+BUNDLED_DB = os.path.join(BASE_DIR, "ibadahku.db")
+
+# Saat pertama kali pindah dari versi desktop, salin database lama jika ada.
+if not os.path.exists(DB) and os.path.exists(BUNDLED_DB):
+    try:
+        import shutil
+        shutil.copy2(BUNDLED_DB, DB)
+    except OSError:
+        pass
 
 NAMA_WAKTU = ["Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya"]
 
