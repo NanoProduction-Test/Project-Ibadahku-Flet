@@ -1,60 +1,32 @@
-🕌 IbadahKu
-Pendamping ibadah harianmu — jadwal sholat otomatis, checklist ibadah, tasbih digital, doa harian, dan arah kiblat dalam satu aplikasi.
+IbadahKu (Flet)
+Pendamping ibadah harian: jadwal sholat otomatis, checklist ibadah, timerfokus, tasbih digital, doa harian, arah kiblat, statistik, dan pencapaian.Versi ini adalah hasil migrasi dari versi Kivy keFlet, dengan tampilan dirombak total ke gaya"Zamrud & Emas" yang responsif di layar HP.
 
-Dibuat dengan Python + Flet · Tersedia untuk Android (APK) dan Desktop
+Fitur
+Beranda — jadwal sholat hari ini dengan countdown real-time,ayat pilihan harian, checklist ibadah dengan streak
+Kegiatan — rutinitas pribadi: tambah, edit, hapus, tandai selesai
+Fokus — timer sesi ibadah ala pomodoro, total menit tersimpan
+Tasbih — counter dzikir dengan cincin 33 butir, pilihan dzikirdan target yang bisa diubah
+Doa Harian — 24 doa dengan teks Arab, latin, arti; pencariandan favorit
+Arah Kiblat — sudut kiblat dari kota terpilih + kompas
+Statistik & Pencapaian — ringkasan 7 hari dan lencana
+Atur — pilih kota, mode gelap, 5 warna aksen
+Jadwal sholat diambil dari API AlAdhan (metode Kemenag RI), laludi-cache ke SQLite sehingga tetap bisa dilihat offline
+Semua data tersimpan lokal di perangkat (SQLite)
+Menjalankan (mode pengembangan)
+python -m venv .venv.venv\Scripts\activate      # Windowspip install -r requirements.txtpython main.py --web        # via browser (tes tampilan HP: buka dari HP, satu WiFi)python main.py              # atau mode jendela desktop
+Build APK Android
+flet build apk
+Butuh Flutter SDK dan Android SDK (flet akan menawarkan instalasiotomatis saat pertama kali). Hasil build ada di folder build\apk\.
 
-✨ Fitur
-📅 Jadwal sholat otomatis — sesuai kota pilihanmu (metode resmi Kemenag RI), lengkap dengan hitungan mundur real-time
-☑️ Checklist ibadah harian — tandai sholat & amalanmu, jaga streak harianmu
-📋 Kegiatan pribadi — catat rutinitas: ngaji, belajar, olahraga (tambah, edit, hapus)
-⏱️ Timer fokus ibadah — untuk tilawah, hafalan, atau dzikir tanpa distraksi
-📿 Tasbih digital — cincin 33 butir menyala mengelilingi hitungan, ganti dzikir & target sesukamu
-📖 Doa harian — 24 doa pilihan: teks Arab, latin, arti, pencarian, dan favorit
-🧭 Arah kiblat — arah Ka'bah dari kotamu, lengkap dengan kompas
-📊 Statistik 7 hari & pencapaian — pantau konsistensimu, buka lencana 🏆
-🌙 Mode gelap + 5 pilihan warna tema
-📱 Cara Memasang di HP
-Download file ibadahku.apk
-Buka file tersebut di HP (biasanya di folder Download)
-Muncul peringatan "sumber tidak dikenal"? → Settings → Izinkan (normal, karena bukan dari Play Store)
-Tekan Install → selesai 🎉
-💡 Internet hanya dibutuhkan saat pertama kali mengambil jadwal sholat setiap hari. Setelah terunduh, jadwal tetap bisa dilihat offline.
+Struktur Proyek
+main.py                     # seluruh UI & logika (5 halaman + dialog)database.py                 # SQLite: kegiatan, ceklis, tasbih, statistikprayertimes.py              # API AlAdhan + perhitungan arah kiblatdoa.py                      # koleksi doa harianachievements.py             # sistem lencana/pencapaianpyproject.toml              # identitas app untuk build Androidassets/fonts/               # font Arab (NotoNaskh)
+Catatan Migrasi
+Proyek awalnya dibangun dengan Kivy selama 4 minggu (lihat riwayatcommit di bawah), lalu dimigrasi total ke Flet 1.0. Beberapa hal yangperlu diperhatikan kalau mengembangkan lebih lanjut:
 
-🚀 Panduan Pemakaian Singkat
-Pertama kali (2 menit):
-
-Buka tab Atur → pilih kotamu → jadwal sholat otomatis menyesuaikan
-Selesai!
-Sehari-hari:
-
-Tab	Fungsinya
-Beranda	Jadwal sholat + ayat hari ini + checklist ibadah — centang tiap selesai
-Kegiatan	Rutinitasmu: tekan + Tambah untuk baru, ketuk kartu untuk edit
-Fokus	Pilih durasi → Mulai → beribadah khusyuk
-Tasbih	Tap tombol besar (atau cincinnya) tiap dzikir
-Atur	Kota, tema, doa harian, kiblat, statistik, pencapaian
-❓ FAQ
-Kenapa jadwal sholatnya tidak muncul?Pastikan internet aktif saat pertama kali membuka aplikasi di hari itu. Setelah terunduh, tersimpan untuk offline.
-
-Apakah data hilang kalau aplikasi ditutup?Tidak. Checklist, kegiatan, hitungan tasbih, dan pengaturan tersimpan permanen di perangkat.
-
-Jadwalnya akurat?Ya — dihitung dengan metode resmi Kementerian Agama RI (via layanan AlAdhan) sesuai koordinat kotamu.
-
-Gratis? Ada iklan?100% gratis, tanpa iklan, tanpa akun, tanpa pelacakan. Data kamu tidak dikirim ke mana pun.
-
-👨‍💻 Untuk Pengembang
-Ingin menjalankan dari kode sumber?
-
-pip install -r requirements.txtpython main.py --web
-Struktur kode:
-
-File	Peran
-main.py	Antarmuka & logika aplikasi (Flet)
-database.py	Penyimpanan data (SQLite)
-prayertimes.py	API AlAdhan + perhitungan kiblat
-doa.py	Koleksi doa harian
-achievements.py	Sistem pencapaian
-Build APK sendiri: flet build apk (butuh Flutter SDK + Android SDK)
-
-📖 Riwayat Proyek
-Dikembangkan bertahap selama ±4 minggu: awalnya dibangun dengan Kivy, kemudian dimigrasi total ke Flet demi tampilan modern yang responsif di layar HP. Riwayat lengkapnya ada di tab Commits.
+Event Dropdown di Flet 1.0 bernama on_select, bukan on_change
+Row memakai vertical_alignment, Column memakai horizontal_alignment
+Dialog dibuka dengan page.show_dialog() dan ditutup denganpage.pop_dialog()
+Database harus diletakkan di lokasi yang benar-benar writable:di Android, folder home menunjuk ke /data yang terkunci sistem,jadi lokasi penyimpanan dipilih dengan uji-tulis beberapa kandidat
+Timer dan countdown memakai task async (asyncio), bukan thread,agar UI tidak membeku
+Riwayat
+Dikembangkan sebagai project belajar Python: 4 minggu dengan Kivy(timeline sholat, kegiatan, timer, tasbih, doa, kiblat), lalu pindahtotal ke Flet untuk tampilan web/desktop/Android yang lebih modern.Build APK diuji langsung di perangkat Android.
