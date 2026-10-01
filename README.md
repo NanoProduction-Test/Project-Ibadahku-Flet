@@ -1,4 +1,4 @@
-IbadahKu (Flet)
+#IbadahKu (Flet)
 Pendamping ibadah harian: jadwal sholat otomatis, checklist ibadah, timer fokus, tasbih digital, doa harian, arah kiblat, statistik, dan pencapaian. Versi ini adalah hasil migrasi dari Kivy ke Flet, dengan tampilan dirombak total ke gaya "Zamrud & Emas" yang responsif di layar HP.
 
 Fitur
