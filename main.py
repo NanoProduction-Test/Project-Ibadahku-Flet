@@ -66,14 +66,14 @@ def ubah_kegiatan(id_kegiatan, nama, jam, hari, kategori):
             "UPDATE kegiatan SET nama=?, jam=?, hari=?, kategori=? WHERE id=?",
             (nama, jam, hari, kategori, id_kegiatan),
         )
-
+ #================= Aplikasi =================
 
 class IbadahKu:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page): 
         self.page = page
         self.index = 0
-        db.buat_tabel()
-        self.dark = db.ambil_pengaturan("dark_mode", "0") == "1"
+        db.buat_tabel() # 3. Siapkan database (10 tabel)
+        self.dark = db.ambil_pengaturan("dark_mode", "0") == "1" # 4. Ingat pengaturan kemarin
         self.accent = db.ambil_pengaturan("accent", ACCENTS[0])
         self.city = db.ambil_pengaturan("kota", "Jakarta")
         self.alarm = db.ambil_pengaturan("alarm", "0") == "1"
@@ -92,13 +92,13 @@ class IbadahKu:
         self._hero_nama = None
         self._fokus_time = None
         self._fokus_ring = None
-        self._configure_page()
+        self._configure_page() # 5. Bangun page
 
     # ================= tema & komponen dasar =================
 
     @property
     def c(self):
-        return DARK if self.dark else LIGHT
+        return DARK if self.dark else LIGHT # warna mana yang aktif
 
     def _darken(self, hex_color, f=0.6):
         h = hex_color.lstrip("#")
@@ -193,17 +193,18 @@ class IbadahKu:
         if first:
             self.page.add(ft.SafeArea(content=self.body, expand=True))
             self.page.run_task(self._countdown_loop)
-        self.refresh()
+        self.refresh() # gambar ke layar
 
+ # ================= Refresh Halaman =================
     def refresh(self):
         self.page.bgcolor = self.c["bg"]
         self.page.navigation_bar.bgcolor = self.c["surface"]
         self.page.navigation_bar.selected_index = self.index
         self.page.navigation_bar.indicator_color = self.accent + "26"
         pages = [self.home_page, self.activities_page, self.focus_page,
-                 self.tasbih_page, self.settings_page]
+                 self.tasbih_page, self.settings_page] # panggil fungsi halaman aktif
         self.body.content = pages[self.index]()
-        self.page.update()
+        self.page.update() # gambar ke layar
 
     # ================= Beranda =================
 
@@ -223,16 +224,16 @@ class IbadahKu:
             self.prayer = None
             self._prayer_retry_at = time.time() + 30
         return self.prayer
-
+ # ================= Cara Tahu Jadwal Sholat =================
     def next_prayer(self):
         jadwal = self.get_prayer()
         if not jadwal:
             return None, None
         now = datetime.now()
-        for name, hm in jadwal:
+        for name, hm in jadwal: # periksa urut: Subuh→Isya
             h, m = map(int, hm.split(":")[:2])
-            target = now.replace(hour=h, minute=m, second=0, microsecond=0)
-            if target > now:
+            target = now.replace(hour=h, minute=m, second=0, microsecond=0) # "11:17" → (11, 17)
+            if target > now: # yang pertama BELUM lewat
                 return name, target
         name, hm = jadwal[0]
         h, m = map(int, hm.split(":")[:2])
@@ -244,15 +245,15 @@ class IbadahKu:
             return "--:--:--"
         sec = max(0, int((target - datetime.now()).total_seconds()))
         return f"{sec // 3600:02d}:{(sec % 3600) // 60:02d}:{sec % 60:02d}"
-
-    async def _countdown_loop(self):
-        while True:
-            await asyncio.sleep(1)
+ # ================= Countdown Loop =================
+    async def _countdown_loop(self): 
+        while True: # hidup selamanya
+            await asyncio.sleep(1) # tunggu 1 detik (UI tetap hidup)
             try:
                 if self.index == 0:
                     if self._countdown_label is not None:
                         self._countdown_label.value = self.countdown_text()
-                        self._countdown_label.update()
+                        self._countdown_label.update() # ganti ANGKANYA saja
                     nama = self.next_prayer()[0] or ""
                     if nama != self._hero_nama:
                         self.refresh()
@@ -376,11 +377,11 @@ class IbadahKu:
             ayat_card,
             checklist_card,
         ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
-
+ # ================= Toggle Checklist =================
     def toggle_check(self, item_id, value):
-        db.set_ceklis(item_id, today(), value)
-        achievements.evaluasi()
-        self.refresh()
+        db.set_ceklis(item_id, today(), value) # 1. SIMPAN
+        achievements.evaluasi() # 2. cek lencana
+        self.refresh() # 3. GAMBAR ULANG
 
     # ================= Kegiatan =================
 
@@ -524,10 +525,10 @@ class IbadahKu:
                            value=data["jam"] if edit else "19:00", border_radius=14)
         pilihan = {"hari": data["hari"] if edit else "Setiap hari",
                    "kategori": data["kategori"] if edit else "Pribadi"}
-
+ # ================= Chip Row =================
         def chip_row(judul, opsi, kunci):
             def buat(label):
-                aktif = pilihan[kunci] == label
+                aktif = pilihan[kunci] == label # apakah ini yang dipilih?
                 return ft.Container(
                     content=ft.Text(label, size=12, weight=ft.FontWeight.BOLD,
                                     color="#FFFFFF" if aktif else self.c["text"]),
@@ -535,12 +536,12 @@ class IbadahKu:
                     border=None if aktif else ft.Border.all(1, self.c["line"]),
                     border_radius=999,
                     padding=ft.Padding.symmetric(horizontal=13, vertical=8),
-                    on_click=lambda e, l=label: pilih(l))
+                    on_click=lambda e, l=label: pilih(l)) # hijau kalau aktif
 
             row = ft.Row([buat(x) for x in opsi], wrap=True, spacing=6, run_spacing=6)
 
             def pilih(label):
-                pilihan[kunci] = label
+                pilihan[kunci] = label # simpan di "kotak sementara"
                 row.controls = [buat(x) for x in opsi]
                 try:
                     self.page.update()
@@ -559,14 +560,14 @@ class IbadahKu:
                 name.error_text = "Nama belum diisi"
                 self.page.update()
                 return
-            try:
+            try: 
                 bagian = nilai_jam.split(":")
                 h, m = int(bagian[0]), int(bagian[1])
                 valid = len(bagian) == 2 and 0 <= h <= 23 and 0 <= m <= 59
             except (ValueError, IndexError):
-                valid = False
+                valid = False # "7 pagi" → gagal di sini
             if not valid:
-                jam.error_text = "Format jam: HH:MM (contoh 19:30)"
+                jam.error_text = "Format jam: HH:MM (contoh 19:30)"# pesan merah di layar
                 self.page.update()
                 return
             jam_rapi = f"{h:02d}:{m:02d}"
@@ -699,17 +700,17 @@ class IbadahKu:
         self.refresh()
         self.timer_task = self.page.run_task(self._timer_loop)
 
-    async def _timer_loop(self):
+    async def _timer_loop(self): # Timer Fokus
         while self.timer_running and self.timer_left > 0:
-            await asyncio.sleep(1)
+            await asyncio.sleep(1) # tunggu 1 detik
             if not self.timer_running:
                 return
-            self.timer_left -= 1
-            self._update_fokus_ui()
+            self.timer_left -= 1 # kurangi 1
+            self._update_fokus_ui() # update angka + lingkaran
         self.timer_running = False
-        db.catat_timer(self.timer_total // 60)
-        achievements.evaluasi()
-        self.notify("Sesi timer selesai. Alhamdulillah.")
+        db.catat_timer(self.timer_total // 60) # catat menit ke database
+        achievements.evaluasi() # cek lencana
+        self.notify("Sesi timer selesai. Alhamdulillah.") # notifikasi
         self.refresh()
 
     def reset_timer(self, e=None):
@@ -986,8 +987,8 @@ class IbadahKu:
         marks = []
         for angle, label in [(0, "U"), (90, "T"), (180, "S"), (270, "B")]:
             rad = math.radians(angle - 90)
-            x = 110 + 86 * math.cos(rad)
-            y = 110 + 86 * math.sin(rad)
+            x = 110 + 86 * math.cos(rad) # posisi X huruf di lingkaran
+            y = 110 + 86 * math.sin(rad) # posisi Y huruf di lingkaran
             marks.append(ft.Container(
                 content=ft.Text(label, size=14, weight=ft.FontWeight.BOLD,
                                 color=GOLD if label == "U" else self.c["muted"]),
@@ -1078,12 +1079,12 @@ class IbadahKu:
                              actions=[ft.TextButton("Tutup", on_click=lambda e: self.close_dialog(dlg))])
         self.page.show_dialog(dlg)
 
-
-def main(page: ft.Page):
+ # ================= Start Aplikasi =================
+def main(page: ft.Page): # 2. Bikin object aplikasi
     IbadahKu(page)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # 1. Start apk
     import sys
     if "--web" in sys.argv:
         ft.run(main, view=ft.AppView.WEB_BROWSER)
