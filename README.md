@@ -1,3 +1,6 @@
+Link Google Drive Apk
+https://drive.google.com/drive/folders/1c7rfdvSJFCwKX5I74q7-aOZjK0Cg7n2V?usp=drive_link
+
 IbadahKu (Flet)
 Pendamping ibadah harian: jadwal sholat otomatis, checklist ibadah, timerfokus, tasbih digital, doa harian, arah kiblat, statistik, dan pencapaian.Versi ini adalah hasil migrasi dari versi Kivy keFlet, dengan tampilan dirombak total ke gaya"Zamrud & Emas" yang responsif di layar HP.
 
